@@ -1,0 +1,4062 @@
+[gemini-code-1792061448949.html](https://github.com/user-attachments/files/33491072/gemini-code-1792061448949.html)[Uploading gemini-code-1792061448<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GLIWICE: KRONIKI ZSTI — Miejska Gra Przygodowa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --ui-bg: rgba(17, 24, 39, 0.96);
+  --ui-surface: #1f2937;
+  --ui-border: #374151;
+  --ui-accent: #3b82f6;
+  --ui-success: #10b981;
+  --ui-danger: #ef4444;
+  --ui-text: #f9fafb;
+  --ui-muted: #9ca3af;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0b0f17;
+  font-family: 'Inter', sans-serif;
+  color: var(--ui-text);
+}
+
+#game-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #0d131a;
+}
+
+.leaflet-tile-pane {
+  filter: contrast(1.04) saturate(1.05);
+}
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(17, 24, 39, 0.88) !important;
+  color: #9ca3af !important;
+}
+.leaflet-control-attribution a { color: #60a5fa !important; }
+
+/* GÓRNY PASEK HUD (CZYSTY STYL TECHNICZNY) */
+.top-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.hud-panel {
+  pointer-events: auto;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+}
+
+.player-avatar {
+  width: 44px;
+  height: 48px;
+  background: #111827;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.player-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.hearts-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.heart-svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.heart-svg.lost {
+  opacity: 0.18;
+  filter: grayscale(1);
+}
+
+.player-stats {
+  display: flex;
+  gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+.player-stats b { color: #fff; }
+
+.story-tracker {
+  padding: 9px 16px;
+  max-width: 540px;
+  text-align: left;
+  border-left: 3px solid var(--ui-accent);
+}
+
+.story-chapter-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #60a5fa;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.story-objective {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.story-sub {
+  font-size: 11px;
+  color: var(--ui-muted);
+  margin-top: 2px;
+}
+
+.hud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hud-btn {
+  pointer-events: auto;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  padding: 9px 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hud-btn:hover {
+  background: var(--ui-surface);
+  border-color: #60a5fa;
+}
+.hud-btn.bus-btn {
+  background: #1d4ed8;
+  border-color: #3b82f6;
+  color: #fff;
+}
+.hud-btn.bus-btn:hover {
+  background: #1e40af;
+}
+
+/* DOLNY PASEK NAWIGACJI */
+.bottom-hud {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.dpad-box {
+  pointer-events: auto;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.dpad-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ui-muted);
+  text-transform: uppercase;
+}
+
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 36px);
+  grid-template-rows: repeat(3, 36px);
+  gap: 3px;
+}
+
+.dpad-btn {
+  background: var(--ui-surface);
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dpad-btn:active, .dpad-btn.active {
+  background: var(--ui-accent);
+  border-color: #fff;
+}
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-center {
+  grid-column: 2; grid-row: 2;
+  background: #111827;
+  border-radius: 4px;
+  border: 1px solid #374151;
+}
+.dpad-right { grid-column: 3; grid-row: 2; }
+.dpad-down { grid-column: 2; grid-row: 3; }
+
+.location-dock {
+  pointer-events: auto;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-left: 4px solid var(--ui-accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  max-width: 580px;
+  width: 100%;
+  margin: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+.loc-dock-info h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.loc-dock-info p {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.action-primary-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.action-primary-btn:hover {
+  background: #1d4ed8;
+}
+.action-primary-btn.enter-ready {
+  background: #059669;
+  border-color: #34d399;
+}
+.action-primary-btn.enter-ready:hover {
+  background: #047857;
+}
+
+/* POSTAĆ GRACZA NA CHODNIKU */
+.hero-map-marker {
+  width: 30px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.85));
+}
+
+.hero-you-badge {
+  background: #2563eb;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #000;
+}
+
+.hero-sprite-small {
+  width: 24px;
+  height: 30px;
+}
+
+.hero-walking .hero-sprite-small {
+  animation: walkBobSmall 0.22s infinite alternate;
+}
+
+@keyframes walkBobSmall {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-3px) rotate(4deg); }
+}
+
+/* ZNACZNIKI MISJI I ZABYTKÓW */
+.loc-pin-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.loc-pin-wrap:hover { transform: scale(1.08) translateY(-2px); }
+
+.loc-pin-badge {
+  background: #111827;
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-bottom: 3px;
+}
+
+.loc-pin-wrap.unlocked-quest .loc-pin-badge {
+  border-color: #60a5fa;
+  background: #1e3a8a;
+  color: #fff;
+}
+
+.loc-pin-wrap.completed-quest .loc-pin-badge {
+  border-color: #10b981;
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+.loc-pin-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: #1f2937;
+  border: 2px solid #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.75);
+}
+.loc-pin-wrap.unlocked-quest .loc-pin-circle {
+  border-color: #60a5fa;
+  background: #2563eb;
+}
+.loc-pin-wrap.completed-quest .loc-pin-circle {
+  border-color: #10b981;
+  background: #059669;
+}
+
+.landmark-pin-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.landmark-pin-box {
+  width: 28px;
+  height: 28px;
+  background: rgba(17, 24, 39, 0.92);
+  border: 1px solid #6b7280;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.landmark-pin-label {
+  background: rgba(17, 24, 39, 0.92);
+  color: #d1d5db;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
+  border: 1px solid #374151;
+}
+
+/* MODALE */
+.overlay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.hidden { display: none !important; }
+
+.clean-window {
+  max-width: 820px;
+  width: 100%;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.start-header {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 14px;
+}
+
+.start-title-block h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f9fafb;
+  margin-bottom: 4px;
+}
+
+.start-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.feature-card {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 12px;
+}
+.feature-card h4 { color: #93c5fd; font-size: 13px; margin-bottom: 4px; }
+.feature-card p { font-size: 12px; color: #d1d5db; line-height: 1.4; }
+
+.primary-cta-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  padding: 13px 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+.primary-cta-btn:hover {
+  background: #1d4ed8;
+}
+
+/* SCENKA AUTOBUSU A4 — REALISTYCZNA ULICA GLIWIC 1:1 W PIXEL-ARCIE */
+.bus-cutscene-window {
+  max-width: 800px;
+  width: 100%;
+  background: #111827;
+  border: 1px solid #4b5563;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(0,0,0,0.95);
+}
+
+.bus-header {
+  background: #1f2937;
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #374151;
+}
+
+.bus-line-badge {
+  background: #facc15;
+  color: #111827;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.bus-stage {
+  position: relative;
+  height: 270px;
+  background: linear-gradient(180deg, #38bdf8 0%, #93c5fd 52%, #475569 52%, #334155 72%, #1e293b 72%, #0f172a 100%);
+  overflow: hidden;
+}
+
+.bus-scrolling-buildings {
+  position: absolute;
+  bottom: 66px;
+  left: 0;
+  width: 200%;
+  height: 195px;
+  display: flex;
+  animation: scrollGliwiceCity 5.5s linear infinite;
+}
+
+@keyframes scrollGliwiceCity {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.bus-road-stripes {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  width: 200%;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, #f8fafc 0px, #f8fafc 45px, transparent 45px, transparent 90px);
+  animation: moveRoad 0.3s linear infinite;
+}
+
+@keyframes moveRoad {
+  from { transform: translateX(0); }
+  to { transform: translateX(-90px); }
+}
+
+.bus-vehicle-wrap {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 470px;
+  height: 140px;
+  z-index: 5;
+  animation: busBounce 0.28s ease-in-out infinite alternate;
+}
+
+@keyframes busBounce {
+  0% { transform: translateX(-50%) translateY(0px); }
+  100% { transform: translateX(-50%) translateY(-2px); }
+}
+
+.bus-footer {
+  padding: 12px 18px;
+  text-align: left;
+  background: #111827;
+  border-top: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ============================================================================
+   WNĘTRZA LOKALIZACJI I NOWA KARTA ZADANIA (ZERO KASYNA — CZYSTY PANEL TECHNICZNY)
+   ============================================================================ */
+.interior-window {
+  max-width: 960px;
+  width: 100%;
+  max-height: 95vh;
+  border-radius: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.9);
+  background: #111827;
+  border: 1px solid #4b5563;
+}
+
+.theme-zsti { --loc-accent: #38bdf8; --loc-surface: #1e293b; }
+.theme-forum { --loc-accent: #94a3b8; --loc-surface: #27272a; }
+.theme-arena { --loc-accent: #f87171; --loc-surface: #27171c; }
+.theme-chrobrego { --loc-accent: #34d399; --loc-surface: #132a20; }
+.theme-habib { --loc-accent: #fb923c; --loc-surface: #2a1810; }
+.theme-stadium { --loc-accent: #60a5fa; --loc-surface: #112233; }
+
+.interior-top-bar {
+  background: #1f2937;
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #374151;
+}
+
+.interior-top-bar h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--loc-accent);
+}
+
+.interior-scene-canvas {
+  position: relative;
+  height: 285px;
+  width: 100%;
+  overflow: hidden;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 16px 52px;
+}
+
+.scene-bg-zsti {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 72%, #334155 72%, #0f172a 100%);
+}
+.scene-bg-forum {
+  background: linear-gradient(180deg, #18181b 0%, #27272a 72%, #3f3f46 72%, #18181b 100%);
+}
+.scene-bg-arena {
+  background: linear-gradient(180deg, #09090b 0%, #1e1b4b 68%, #7f1d1d 68%, #450a0a 100%);
+}
+.scene-bg-chrobrego {
+  background: linear-gradient(180deg, #0ea5e9 0%, #bae6fd 65%, #15803d 65%, #166534 100%);
+}
+.scene-bg-habib {
+  background: linear-gradient(180deg, #271209 0%, #431407 72%, #292524 72%, #1c1917 100%);
+}
+.scene-bg-stadium {
+  background: repeating-linear-gradient(0deg, #15803d 0px, #15803d 24px, #166534 24px, #166534 48px);
+}
+
+.interior-prop-banner {
+  position: absolute;
+  top: 10px;
+  left: 16px;
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid #4b5563;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 10px;
+  color: #e5e7eb;
+  z-index: 3;
+}
+
+.character-stage-card {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.char-name-plate {
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid #4b5563;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-top: 4px;
+}
+
+/* DYMKI CZATU WYCHODZĄCE Z UST POSTACI */
+.mouth-speech-bubble {
+  position: absolute;
+  top: 6px;
+  width: 290px;
+  background: #ffffff;
+  color: #111827;
+  border: 2px solid #111827;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  z-index: 30;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mouth-speech-bubble.from-left-mouth { left: 95px; }
+.mouth-speech-bubble.from-left-mouth::before {
+  content: '';
+  position: absolute;
+  top: 26px;
+  left: -12px;
+  border-width: 7px 12px 7px 0;
+  border-style: solid;
+  border-color: transparent #111827 transparent transparent;
+}
+.mouth-speech-bubble.from-left-mouth::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: -9px;
+  border-width: 5px 10px 5px 0;
+  border-style: solid;
+  border-color: transparent #ffffff transparent transparent;
+}
+
+.mouth-speech-bubble.from-right-mouth { right: 95px; }
+.mouth-speech-bubble.from-right-mouth::before {
+  content: '';
+  position: absolute;
+  top: 26px;
+  right: -12px;
+  border-width: 7px 0 7px 12px;
+  border-style: solid;
+  border-color: transparent transparent transparent #111827;
+}
+.mouth-speech-bubble.from-right-mouth::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  right: -9px;
+  border-width: 5px 0 5px 10px;
+  border-style: solid;
+  border-color: transparent transparent transparent #ffffff;
+}
+
+.bubble-footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 6px;
+}
+
+.bubble-step-counter {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.bubble-next-btn {
+  pointer-events: auto;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mouth-open { display: none; }
+.mouth-closed { display: block; }
+.is-talking .mouth-open {
+  display: block;
+  animation: mouthTalkOpen 0.2s steps(2, start) infinite;
+}
+.is-talking .mouth-closed {
+  animation: mouthTalkClosed 0.2s steps(2, start) infinite;
+}
+@keyframes mouthTalkOpen { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes mouthTalkClosed { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+/* ANIMACJE BOKSERSKIE */
+@keyframes animJabRight {
+  0% { transform: translateX(0); }
+  45% { transform: translateX(135px) rotate(5deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes animHookRight {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(-16px) rotate(-8deg); }
+  60% { transform: translateX(160px) translateY(-10px) rotate(14deg) scale(1.12); }
+  100% { transform: translateX(0); }
+}
+@keyframes animUppercutRight {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(14px); }
+  65% { transform: translateX(140px) translateY(-25px) rotate(-10deg) scale(1.12); }
+  100% { transform: translateY(0); }
+}
+@keyframes animEnemyAttackLeft {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-140px) rotate(-10deg) scale(1.1); }
+  100% { transform: translateX(0); }
+}
+@keyframes animHitShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px) rotate(-5deg); filter: brightness(1.7); }
+  50% { transform: translateX(10px) rotate(5deg); }
+  75% { transform: translateX(-6px); }
+}
+@keyframes animGuardShield {
+  0%, 100% { transform: scale(1); }
+  50% { filter: drop-shadow(0 0 12px #38bdf8); transform: scale(1.04); }
+}
+
+.anim-jab-r { animation: animJabRight 0.38s ease-out; }
+.anim-hook-r { animation: animHookRight 0.46s ease-out; }
+.anim-uppercut-r { animation: animUppercutRight 0.46s ease-out; }
+.anim-enemy-l { animation: animEnemyAttackLeft 0.42s ease-out; }
+.anim-hit { animation: animHitShake 0.36s ease-in-out; }
+.anim-guard { animation: animGuardShield 0.4s ease-out; }
+
+.sky-messenger-cloud {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: cloudFloat 1.8s ease-in-out infinite alternate;
+}
+@keyframes cloudFloat {
+  0% { transform: translateX(-50%) translateY(0px); }
+  100% { transform: translateX(-50%) translateY(-8px); }
+}
+
+.interior-body {
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rich-location-description {
+  background: #1f2937;
+  border-left: 3px solid var(--loc-accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #d1d5db;
+}
+.rich-location-description b { color: #ffffff; }
+
+/* NOWA KARTA ZADANIA — DZIENNIK OPERACYJNY (BEZ WYGLĄDU KASYNA - PUNKT 4) */
+.briefing-sheet {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.briefing-header {
+  background: #111827;
+  padding: 10px 16px;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.briefing-header span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.briefing-content {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 16px;
+  align-items: center;
+}
+
+.briefing-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.briefing-specs h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+.briefing-specs p {
+  font-size: 13px;
+  color: #d1d5db;
+  line-height: 1.45;
+}
+
+.spec-table {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #374151;
+  padding-top: 10px;
+}
+
+.spec-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.spec-cell small {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #9ca3af;
+}
+.spec-cell strong {
+  font-size: 12px;
+  color: #f3f4f6;
+}
+
+.minigame-panel {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Terminal Binarny ZSTI */
+.binary-terminal {
+  background: #090d16;
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.binary-code-display {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 20px;
+  letter-spacing: 5px;
+  color: #38bdf8;
+  background: #0f172a;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid #1e293b;
+  margin: 10px 0;
+}
+.binary-timer-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.binary-timer-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #38bdf8;
+  transition: width 0.1s linear;
+}
+.binary-input {
+  width: 100%;
+  max-width: 380px;
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  text-align: center;
+  padding: 12px;
+  border-radius: 6px;
+  letter-spacing: 4px;
+  outline: none;
+}
+
+.canvas-mg-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mg-canvas {
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  max-width: 100%;
+  background: #18181b;
+}
+
+.boxing-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.hp-meter-box {
+  background: #1f2937;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #374151;
+}
+.hp-meter-fill {
+  height: 12px;
+  background: #10b981;
+  border-radius: 3px;
+  transition: width 0.15s;
+}
+.hp-meter-fill.enemy { background: #ef4444; }
+.hp-meter-fill.stamina { background: #3b82f6; height: 7px; margin-top: 4px; }
+
+.boxing-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.box-move-btn {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  color: #fff;
+  padding: 10px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.box-move-btn:hover:not(:disabled) {
+  background: #374151;
+  border-color: #93c5fd;
+}
+.box-move-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.guide-item {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+.guide-item.active-stop { border-left: 4px solid #3b82f6; }
+.guide-item.done-stop { border-left: 4px solid #10b981; }
+
+#toast-banner {
+  position: fixed;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  background: #111827;
+  border: 1px solid #60a5fa;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.75);
+}
+
+@media (max-width: 768px) {
+  .top-hud { flex-direction: column; align-items: stretch; }
+  .briefing-content { grid-template-columns: 1fr; }
+  .boxing-actions-grid { grid-template-columns: 1fr 1fr; }
+  .interior-scene-canvas { padding: 12px 14px; height: 245px; }
+  .mouth-speech-bubble { width: 190px; font-size: 11px; }
+  .mouth-speech-bubble.from-left-mouth { left: 65px; }
+  .mouth-speech-bubble.from-right-mouth { right: 65px; }
+  .bottom-hud { flex-direction: column; align-items: center; gap: 8px; }
+  .dpad-box { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <div id="map"></div>
+
+  <!-- GÓRNY PASEK HUD -->
+  <div class="top-hud">
+    <div class="hud-panel player-card">
+      <div class="player-avatar" id="hud-avatar-svg"></div>
+      <div class="player-info">
+        <div class="player-title">UCZEŃ ZSTI GLIWICE</div>
+        <div class="hearts-row" id="hearts-container"></div>
+        <div class="player-stats">
+          <span>PKT: <b id="score-val">0</b></span>
+          <span>ETAP: <b id="chapter-val">1 / 6</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-panel story-tracker">
+      <div class="story-chapter-tag" id="hud-chapter-title">ETAP 1/6: ZSTI GLIWICE (UL. CHORZOWSKA 5)</div>
+      <div class="story-objective" id="hud-objective-text">Wejdź do ZSTI i porozmawiaj z Panem Łukaszem Kornasiem</div>
+      <div class="story-sub" id="hud-sub-text">Ruch pieszy odbywa się wyłącznie po chodnikach i przejściach dla pieszych</div>
+    </div>
+
+    <div class="hud-actions">
+      <button class="hud-btn bus-btn" onclick="openBusScheduleModal()">🚌 AUTOBUS A4 / TRASA</button>
+      <button class="hud-btn" onclick="centerOnCurrentObjective()">🎯 POKAŻ CEL</button>
+      <button class="hud-btn" onclick="toggleAudio()" id="audio-btn">🔊 DŹWIĘK</button>
+    </div>
+  </div>
+
+  <!-- DOLNY PASEK NAWIGACJI -->
+  <div class="bottom-hud">
+    <div class="dpad-box">
+      <div class="dpad-label">Chodnik / Pasy</div>
+      <div class="dpad-grid">
+        <button class="dpad-btn dpad-up" data-dir="up">▲</button>
+        <button class="dpad-btn dpad-left" data-dir="left">◀</button>
+        <div class="dpad-center"></div>
+        <button class="dpad-btn dpad-right" data-dir="right">▶</button>
+        <button class="dpad-btn dpad-down" data-dir="down">▼</button>
+      </div>
+    </div>
+
+    <div class="location-dock" id="location-dock">
+      <div class="loc-dock-info">
+        <h3 id="dock-loc-name">1. ZSTI Gliwice (ul. Chorzowska 5)</h3>
+        <p id="dock-loc-desc">Stoisz na chodniku przed ZSTI. Wejdź do środka na rozmowę z Panem Łukaszem Kornasiem.</p>
+      </div>
+      <div class="loc-action-group">
+        <button class="action-primary-btn enter-ready" id="dock-enter-btn" onclick="handleMainDockAction()">🚪 WEJDŹ DO ŚRODKA</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-banner" class="hidden"></div>
+
+  <!-- MODAL STARTU GRY -->
+  <div class="overlay-modal" id="start-modal">
+    <div class="clean-window">
+      <div class="start-header">
+        <div id="start-hero-preview" style="width:80px;height:100px;flex-shrink:0;"></div>
+        <div class="start-title-block">
+          <h1>GLIWICE: KRONIKI ZSTI</h1>
+          <p style="color:#93c5fd;font-size:13px;font-weight:600;">6 Etapów Zręcznościowych • Chodniki i Przejścia Google Maps • Pajączek w Parku Chrobrego • Derby 3v3 z Botami</p>
+        </div>
+      </div>
+
+      <div class="start-features-grid">
+        <div class="feature-card">
+          <h4>🚶 1. Chodniki i Pasy (0% Budynków)</h4>
+          <p>Postać porusza się ściśle po wyznaczonym grafie chodników i przejść dla pieszych (zebr) wzdłuż ulic Gliwic.</p>
+        </div>
+        <div class="feature-card">
+          <h4>🕷️ 2. Park Chrobrego (Pajączek)</h4>
+          <p>Wspinaj się na wielkiego linowego Pajączka w Parku Chrobrego koło Areny, wciskając w rytmie klawisze W, S, A, D!</p>
+        </div>
+        <div class="feature-card">
+          <h4>🥙 3. Parking Forum, Ring & Adaś</h4>
+          <p>Realistyczny parking 1:1 w Forum, taktyczny boks z unikami w PreZero Arenie oraz pojedynek z Adasiem (limit kebabów, licznik tarczy i kontrataki).</p>
+        </div>
+        <div class="feature-card">
+          <h4>⚽ 4. Mecz Piast – Górnik z Botami AI</h4>
+          <p>Rozbudowany mecz 3v3 na całym boisku: biegaj, podawaj do botów Piasta, odbieraj piłkę wślizgiem i pokonaj bramkarza Górnika!</p>
+        </div>
+      </div>
+
+      <button class="primary-cta-btn" onclick="startStoryGame()">ROZPOCZNIJ GRĘ PRZED ZSTI GLIWICE (UL. CHORZOWSKA 5)</button>
+    </div>
+  </div>
+
+  <!-- SCENKA PRZEJAZDU AUTOBUSEM A4 (REALISTYCZNE TŁO ULIC GLIWIC 1:1) -->
+  <div class="overlay-modal hidden" id="bus-cutscene-modal">
+    <div class="bus-cutscene-window">
+      <div class="bus-header">
+        <span class="bus-line-badge" id="bus-line-label">LINIA A4 — PKM GLIWICE</span>
+        <span style="font-size:11px;color:#9ca3af;font-family:'JetBrains Mono',monospace;">SOLARIS URBINO 18 • WIDOK ULICZNY 1:1</span>
+      </div>
+      <div class="bus-stage">
+        <div class="bus-scrolling-buildings" id="bus-scrolling-bg"></div>
+        <div class="bus-road-stripes"></div>
+        <div class="bus-vehicle-wrap" id="bus-svg-holder"></div>
+      </div>
+      <div class="bus-footer">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#f9fafb;" id="bus-route-title">Kierunek: CH Forum Gliwice</div>
+          <div style="font-size:11px;color:#9ca3af;" id="bus-route-sub">Przejazd ulicami Gliwic – mijasz ceglane kamienice, przejścia dla pieszych i przystanki ZTM.</div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#60a5fa;">PRZYSTANEK NA ŻĄDANIE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL WNĘTRZA LOKALIZACJI -->
+  <div class="overlay-modal hidden" id="interior-modal">
+    <div class="interior-window theme-zsti" id="interior-window-box">
+      <div class="interior-top-bar">
+        <h2 id="int-header-title">LOKALIZACJA: ZSTI GLIWICE</h2>
+        <button class="hud-btn" style="padding:5px 10px;" onclick="closeInteriorModal()">✖ WYJDŹ NA CHODNIK</button>
+      </div>
+
+      <div class="interior-scene-canvas scene-bg-zsti" id="int-scene-bg">
+        <div class="interior-prop-banner" id="int-room-banner">PRACOWNIA SIECIOWA SALA 204 — ZSTI</div>
+
+        <!-- Bohater z lewej + Dymek z ust -->
+        <div class="character-stage-card" id="int-player-card">
+          <div class="mouth-speech-bubble from-left-mouth hidden" id="player-mouth-bubble">
+            <div id="player-bubble-text">...</div>
+            <div class="bubble-footer-bar">
+              <span class="bubble-step-counter" id="player-bubble-step">1/2</span>
+              <button class="bubble-next-btn" id="player-bubble-next">DALEJ ▶</button>
+            </div>
+          </div>
+          <div id="int-player-sprite" style="width:110px;height:138px;"></div>
+          <div class="char-name-plate">TY (Uczeń ZSTI)</div>
+        </div>
+
+        <!-- Chmurka specjalnego gościa -->
+        <div class="sky-messenger-cloud hidden" id="int-cloud-guest">
+          <div id="int-cloud-svg" style="width:170px;height:138px;"></div>
+          <div class="char-name-plate" id="int-cloud-name" style="border-color:#38bdf8;color:#38bdf8;">Pan Daniel Kuśka</div>
+        </div>
+
+        <!-- Postać NPC z prawej + Dymek z ust -->
+        <div class="character-stage-card" id="int-npc-card">
+          <div class="mouth-speech-bubble from-right-mouth hidden" id="npc-mouth-bubble">
+            <div id="npc-bubble-text">...</div>
+            <div class="bubble-footer-bar">
+              <span class="bubble-step-counter" id="npc-bubble-step">1/3</span>
+              <button class="bubble-next-btn" id="npc-bubble-next">DALEJ ▶</button>
+            </div>
+          </div>
+          <div id="int-npc-sprite" style="width:115px;height:142px;"></div>
+          <div class="char-name-plate" id="int-npc-name">Pan Łukasz Kornaś</div>
+        </div>
+      </div>
+
+      <div class="interior-body">
+        <div class="rich-location-description" id="int-loc-history"></div>
+        <div class="minigame-panel" id="int-minigame-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ROZKŁADU JAZDY AUTOBUSU A4 -->
+  <div class="overlay-modal hidden" id="schedule-modal">
+    <div class="clean-window" style="max-width:760px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #374151;padding-bottom:10px;">
+        <div>
+          <h2 style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#60a5fa;">🚌 ROZKŁAD JAZDY LINII A4 — LISTA ETAPÓW W GLIWICACH</h2>
+          <p style="font-size:12px;color:#9ca3af;margin-top:2px;">Wybierz odblokowany przystanek, aby przejechać autobusem komunikacji miejskiej.</p>
+        </div>
+        <button class="hud-btn" onclick="closeBusScheduleModal()">✖ ZAMKNIJ</button>
+      </div>
+      <div class="guide-list" id="bus-stops-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL KOŃCA GRY -->
+  <div class="overlay-modal hidden" id="end-modal">
+    <div class="clean-window" style="max-width:580px;text-align:center;align-items:center;">
+      <div id="end-trophy-svg" style="width:140px;height:140px;"></div>
+      <h1 id="end-title" style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#facc15;">ZDOBYTO PUCHAR GLIWIC!</h1>
+      <p id="end-desc" style="font-size:13.5px;color:#d1d5db;line-height:1.55;"></p>
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px 24px;width:100%;">
+        <div style="font-size:11px;color:#9ca3af;font-family:'JetBrains Mono',monospace;">WYNIK KOŃCOWY</div>
+        <div id="end-score" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#60a5fa;margin-top:4px;">0 PKT</div>
+      </div>
+      <button class="primary-cta-btn" style="width:100%;" onclick="restartFullGame()">ZAGRAJ PONOWNIE OD ZSTI GLIWICE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// GRAFIKI PIXEL-ART HD (POSTACIE, OBRAŻENIA, REALISTYCZNA ULICA GLIWIC 1:1 DLA AUTOBUSU)
+// ============================================================================
+
+function getDamageOverlaysSvg(hpPercent) {
+  let dmg = '';
+  if (hpPercent <= 75) {
+    dmg += `
+      <rect x="52" y="29" width="10" height="4" rx="1" fill="#fde68a" stroke="#78350f" stroke-width="1" transform="rotate(-12 52 29)"/>
+      <circle cx="29" cy="24" r="2" fill="#38bdf8"/>
+    `;
+  }
+  if (hpPercent <= 45) {
+    dmg += `
+      <ellipse cx="38" cy="25" rx="6" ry="3.5" fill="rgba(88, 28, 135, 0.7)"/>
+      <path d="M24 52 L32 58 M58 46 L50 54" stroke="#7f1d1d" stroke-width="2.5" stroke-linecap="round"/>
+    `;
+  }
+  if (hpPercent <= 25) {
+    dmg += `
+      <path d="M50 18 L57 21 L54 27" stroke="#dc2626" stroke-width="2.2" fill="none"/>
+      <rect x="33" y="31" width="5" height="3" fill="#991b1b"/>
+    `;
+  }
+  return dmg;
+}
+
+function getPlayerSvg(hpPercent = 100, isBoxing = false) {
+  const dmgSvg = getDamageOverlaysSvg(hpPercent);
+  const handsSvg = isBoxing ? `
+    <circle cx="15" cy="60" r="11" fill="#ef4444" stroke="#090d16" stroke-width="2.5"/>
+    <circle cx="75" cy="56" r="11" fill="#ef4444" stroke="#090d16" stroke-width="2.5"/>
+  ` : `
+    <rect x="13" y="59" width="10" height="9" rx="3" fill="#fdba74" stroke="#090d16" stroke-width="2"/>
+    <rect x="67" y="59" width="10" height="9" rx="3" fill="#fdba74" stroke="#090d16" stroke-width="2"/>
+  `;
+
+  return `<svg viewBox="0 0 90 115" width="100%" height="100%" shape-rendering="crispEdges">
+    <ellipse cx="45" cy="108" rx="26" ry="5" fill="rgba(0,0,0,0.55)"/>
+    <rect x="29" y="73" width="13" height="26" fill="#1e3a8a" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="48" y="73" width="13" height="26" fill="#1e3a8a" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="25" y="96" width="18" height="9" fill="#ef4444" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="47" y="96" width="18" height="9" fill="#ef4444" stroke="#090d16" stroke-width="2.5"/>
+    <path d="M22 39 L68 39 L64 75 L26 75 Z" fill="#0284c7" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="36" y="39" width="18" height="36" fill="#f8fafc" stroke="#090d16" stroke-width="2"/>
+    <rect x="51" y="45" width="10" height="10" fill="#38bdf8" stroke="#090d16" stroke-width="1.5"/>
+    <text x="56" y="53" font-family="monospace" font-weight="bold" font-size="7" fill="#090d16" text-anchor="middle">Z</text>
+    <rect x="14" y="41" width="10" height="22" fill="#e2e8f0" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="66" y="41" width="10" height="22" fill="#e2e8f0" stroke="#090d16" stroke-width="2.5"/>
+    ${handsSvg}
+    <rect x="30" y="12" width="30" height="25" rx="4" fill="#fed7aa" stroke="#090d16" stroke-width="2.5"/>
+    <path d="M28 16 L30 7 L60 7 L62 16 L56 13 L34 13 Z" fill="#451a03" stroke="#090d16" stroke-width="2"/>
+    <rect x="36" y="22" width="4" height="5" fill="#090d16"/>
+    <rect x="50" y="22" width="4" height="5" fill="#090d16"/>
+    <rect class="mouth-closed" x="40" y="31" width="10" height="2.5" fill="#090d16"/>
+    <g class="mouth-open">
+      <rect x="39" y="29" width="12" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+      <rect x="41" y="29" width="8" height="2" fill="#ffffff"/>
+    </g>
+    ${dmgSvg}
+  </svg>`;
+}
+
+function getNpcSvg(type, hpPercent = 100) {
+  const dmgSvg = getDamageOverlaysSvg(hpPercent);
+
+  if (type === 'kornas') {
+    return `<svg viewBox="0 0 95 115" width="100%" height="100%" shape-rendering="crispEdges">
+      <ellipse cx="47" cy="108" rx="27" ry="5" fill="rgba(0,0,0,0.55)"/>
+      <rect x="31" y="74" width="13" height="26" fill="#1e293b" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="50" y="74" width="13" height="26" fill="#1e293b" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M23 39 L71 39 L67 75 L27 75 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
+      <rect x="39" y="39" width="16" height="36" fill="#f8fafc" stroke="#090d16" stroke-width="1.5"/>
+      <path d="M45 40 L49 40 L50 65 L47 70 L44 65 Z" fill="#0284c7"/>
+      <rect x="14" y="41" width="10" height="24" fill="#0f172a" stroke="#000" stroke-width="2.5"/>
+      <rect x="70" y="41" width="10" height="24" fill="#0f172a" stroke="#000" stroke-width="2.5"/>
+      <rect x="56" y="54" width="28" height="18" fill="#0284c7" stroke="#090d16" stroke-width="2.5"/>
+      <text x="70" y="66" font-family="monospace" font-size="8" font-weight="bold" fill="#fff" text-anchor="middle">1011</text>
+      <rect x="32" y="12" width="30" height="26" fill="#fdba74" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M30 15 L33 7 L61 7 L64 15 Z" fill="#292524" stroke="#090d16" stroke-width="2"/>
+      <rect x="34" y="19" width="11" height="8" fill="#e0f2fe" stroke="#090d16" stroke-width="2"/>
+      <rect x="49" y="19" width="11" height="8" fill="#e0f2fe" stroke="#090d16" stroke-width="2"/>
+      <rect x="37" y="21" width="4" height="4" fill="#090d16"/>
+      <rect x="52" y="21" width="4" height="4" fill="#090d16"/>
+      <line x1="45" y1="22" x2="49" y2="22" stroke="#090d16" stroke-width="2.5"/>
+      <rect class="mouth-closed" x="42" y="32" width="10" height="2.5" fill="#090d16"/>
+      <g class="mouth-open">
+        <rect x="41" y="30" width="12" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+        <rect x="43" y="30" width="8" height="2" fill="#fff"/>
+      </g>
+    </svg>`;
+  }
+
+  if (type === 'boxer') {
+    return `<svg viewBox="0 0 95 115" width="100%" height="100%" shape-rendering="crispEdges">
+      <ellipse cx="47" cy="108" rx="29" ry="6" fill="rgba(0,0,0,0.6)"/>
+      <rect x="29" y="72" width="15" height="26" fill="#b91c1c" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="51" y="72" width="15" height="26" fill="#b91c1c" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="26" y="64" width="43" height="10" fill="#f59e0b" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M19 35 L76 35 L68 65 L27 65 Z" fill="#fdba74" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="11" y="37" width="11" height="22" fill="#fdba74" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="73" y="37" width="11" height="22" fill="#fdba74" stroke="#090d16" stroke-width="2.5"/>
+      <circle cx="16" cy="57" r="13" fill="#dc2626" stroke="#090d16" stroke-width="2.5"/>
+      <circle cx="79" cy="53" r="13" fill="#dc2626" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="32" y="10" width="31" height="25" fill="#fdba74" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="31" y="12" width="33" height="6" fill="#dc2626" stroke="#090d16" stroke-width="2"/>
+      <rect x="36" y="20" width="6" height="5" fill="#090d16"/>
+      <rect x="52" y="20" width="6" height="5" fill="#090d16"/>
+      <rect class="mouth-closed" x="40" y="29" width="15" height="4" fill="#f8fafc" stroke="#090d16" stroke-width="1.5"/>
+      <g class="mouth-open">
+        <rect x="39" y="28" width="17" height="7" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+        <rect x="41" y="28" width="13" height="3" fill="#f8fafc"/>
+      </g>
+      ${dmgSvg}
+    </svg>`;
+  }
+
+  if (type === 'adas') {
+    return `<svg viewBox="0 0 95 115" width="100%" height="100%" shape-rendering="crispEdges">
+      <ellipse cx="47" cy="108" rx="26" ry="5" fill="rgba(0,0,0,0.55)"/>
+      <rect x="31" y="74" width="12" height="25" fill="#f8fafc" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="51" y="74" width="12" height="25" fill="#f8fafc" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M24 39 L70 39 L66 75 L28 75 Z" fill="#f8fafc" stroke="#090d16" stroke-width="2.5"/>
+      <line x1="36" y1="39" x2="54" y2="62" stroke="#090d16" stroke-width="3"/>
+      <rect x="26" y="61" width="42" height="7" fill="#18181b" stroke="#000" stroke-width="2"/>
+      <rect x="13" y="42" width="11" height="20" fill="#f8fafc" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="70" y="38" width="11" height="20" fill="#f8fafc" stroke="#090d16" stroke-width="2.5"/>
+      <circle cx="18" cy="64" r="6" fill="#fed7aa" stroke="#090d16" stroke-width="2"/>
+      <circle cx="76" cy="36" r="6" fill="#fed7aa" stroke="#090d16" stroke-width="2"/>
+      <rect x="33" y="13" width="29" height="25" fill="#fed7aa" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="31" y="15" width="33" height="6" fill="#ef4444" stroke="#090d16" stroke-width="2"/>
+      <rect x="38" y="23" width="5" height="5" fill="#090d16"/>
+      <rect x="52" y="23" width="5" height="5" fill="#090d16"/>
+      <rect class="mouth-closed" x="43" y="32" width="9" height="2.5" fill="#090d16"/>
+      <g class="mouth-open">
+        <rect x="42" y="30" width="11" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+      </g>
+    </svg>`;
+  }
+
+  if (type === 'gornik_captain') {
+    return `<svg viewBox="0 0 95 115" width="100%" height="100%" shape-rendering="crispEdges">
+      <ellipse cx="47" cy="108" rx="27" ry="5" fill="rgba(0,0,0,0.55)"/>
+      <rect x="31" y="73" width="12" height="25" fill="#1e3a8a" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="51" y="73" width="12" height="25" fill="#1e3a8a" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M23 39 L71 39 L67 74 L27 74 Z" fill="#ffffff" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="27" y="42" width="8" height="30" fill="#dc2626"/>
+      <rect x="59" y="42" width="8" height="30" fill="#1d4ed8"/>
+      <circle cx="47" cy="95" r="10" fill="#fff" stroke="#090d16" stroke-width="2.5"/>
+      <rect x="44" y="92" width="6" height="6" fill="#090d16"/>
+      <rect x="32" y="12" width="30" height="25" fill="#fed7aa" stroke="#090d16" stroke-width="2.5"/>
+      <path d="M30 14 L34 7 L60 7 L64 14 Z" fill="#18181b"/>
+      <rect x="37" y="21" width="5" height="5" fill="#090d16"/>
+      <rect x="52" y="21" width="5" height="5" fill="#090d16"/>
+      <rect class="mouth-closed" x="42" y="31" width="10" height="2.5" fill="#090d16"/>
+      <g class="mouth-open">
+        <rect x="41" y="29" width="12" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+      </g>
+    </svg>`;
+  }
+
+  return `<svg viewBox="0 0 95 115" width="100%" height="100%" shape-rendering="crispEdges">
+    <ellipse cx="47" cy="108" rx="26" ry="5" fill="rgba(0,0,0,0.55)"/>
+    <rect x="31" y="73" width="13" height="26" fill="#334155" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="50" y="73" width="13" height="26" fill="#334155" stroke="#090d16" stroke-width="2.5"/>
+    <path d="M23 39 L71 39 L67 75 L27 75 Z" fill="#10b981" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="32" y="12" width="30" height="26" fill="#fed7aa" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="37" y="21" width="5" height="5" fill="#090d16"/>
+    <rect x="52" y="21" width="5" height="5" fill="#090d16"/>
+    <rect class="mouth-closed" x="42" y="32" width="10" height="2.5" fill="#090d16"/>
+    <g class="mouth-open">
+      <rect x="41" y="30" width="12" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+    </g>
+  </svg>`;
+}
+
+function getCloudMessengerSvg(personType) {
+  const isKuska = personType === 'kuska';
+  const suitColor = isKuska ? '#0284c7' : '#15803d';
+  const badgeText = isKuska ? 'PAN DANIEL KUŚKA' : 'PAN DAMIAN STELMACH';
+  return `<svg viewBox="0 0 180 140" width="100%" height="100%" shape-rendering="crispEdges">
+    <path d="M62 42 L118 42 L113 84 L67 84 Z" fill="${suitColor}" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="81" y="42" width="18" height="42" fill="#f8fafc" stroke="#090d16" stroke-width="1.5"/>
+    <rect x="72" y="12" width="36" height="29" fill="#fed7aa" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="78" y="22" width="5" height="5" fill="#090d16"/>
+    <rect x="97" y="22" width="5" height="5" fill="#090d16"/>
+    <rect class="mouth-closed" x="84" y="34" width="12" height="2.5" fill="#090d16"/>
+    <g class="mouth-open">
+      <rect x="83" y="32" width="14" height="6" fill="#7f1d1d" stroke="#090d16" stroke-width="1.5"/>
+    </g>
+    <path d="M22 98 Q12 80 34 75 Q46 58 74 66 Q102 54 124 72 Q154 74 148 98 Q154 118 125 118 L38 118 Q14 118 22 98 Z"
+          fill="#ffffff" stroke="#38bdf8" stroke-width="3.5"/>
+    <rect x="34" y="90" width="112" height="18" rx="4" fill="#09090b" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="90" y="103" font-family="monospace" font-weight="bold" font-size="10" fill="#38bdf8" text-anchor="middle">${badgeText}</text>
+  </svg>`;
+}
+
+function getTrophySvg() {
+  return `<svg viewBox="0 0 120 120" width="100%" height="100%" shape-rendering="crispEdges">
+    <circle cx="60" cy="60" r="54" fill="rgba(250, 204, 21, 0.14)"/>
+    <rect x="36" y="92" width="48" height="16" fill="#78350f" stroke="#09090b" stroke-width="3"/>
+    <rect x="44" y="96" width="32" height="8" fill="#facc15"/>
+    <rect x="52" y="72" width="16" height="20" fill="#eab308" stroke="#09090b" stroke-width="3"/>
+    <path d="M30 22 L90 22 L82 64 Q60 78 38 64 Z" fill="#facc15" stroke="#09090b" stroke-width="3"/>
+    <path d="M30 28 L16 28 L16 48 L34 54" fill="none" stroke="#eab308" stroke-width="5"/>
+    <path d="M90 28 L104 28 L104 48 L86 54" fill="none" stroke="#eab308" stroke-width="5"/>
+    <text x="60" y="48" font-family="monospace" font-weight="bold" font-size="11" fill="#09090b" text-anchor="middle">PIAST</text>
+    <text x="60" y="60" font-family="monospace" font-weight="bold" font-size="9" fill="#b91c1c" text-anchor="middle">GLIWICE</text>
+  </svg>`;
+}
+
+// REALISTYCZNA PANORAMA ULICY GLIWIC 1:1 W PIXEL-ARCIE PODCZAS JAZDY AUTOBUSEM (PUNKT 3)
+function getScrollingGliwiceBuildingsHtml() {
+  const streetScene = `
+    <svg viewBox="0 0 900 195" width="50%" height="100%" preserveAspectRatio="none" shape-rendering="crispEdges">
+      <!-- Chmury i daleka panorama (Radiostacja + Wieża Katedry) -->
+      <rect x="60" y="22" width="75" height="14" fill="#ffffff" opacity="0.8"/>
+      <rect x="420" y="16" width="95" height="16" fill="#ffffff" opacity="0.8"/>
+      <polygon points="195,155 210,18 218,18 233,155" fill="none" stroke="#78350f" stroke-width="2.5"/>
+      <line x1="202" y1="60" x2="226" y2="60" stroke="#78350f" stroke-width="2"/>
+      <line x1="199" y1="100" x2="229" y2="100" stroke="#78350f" stroke-width="2"/>
+
+      <!-- 1. Śląska ceglana kamienica (ul. Chorzowska / Zwycięstwa) z gzymsami i sklepem na parterze -->
+      <rect x="15" y="45" width="155" height="115" fill="#9a3412" stroke="#18181b" stroke-width="2"/>
+      <rect x="12" y="40" width="161" height="8" fill="#431407"/>
+      <rect x="15" y="95" width="155" height="4" fill="#d6d3d1"/>
+      <!-- Rzędy okien z białymi ramami -->
+      <rect x="28" y="56" width="22" height="28" fill="#1e293b" stroke="#f8fafc" stroke-width="2"/>
+      <rect x="64" y="56" width="22" height="28" fill="#1e293b" stroke="#f8fafc" stroke-width="2"/>
+      <rect x="100" y="56" width="22" height="28" fill="#1e293b" stroke="#f8fafc" stroke-width="2"/>
+      <rect x="136" y="56" width="22" height="28" fill="#1e293b" stroke="#f8fafc" stroke-width="2"/>
+      <!-- Witryna piekarni / sklepu na parterze -->
+      <rect x="26" y="108" width="85" height="48" fill="#0f172a" stroke="#facc15" stroke-width="2"/>
+      <rect x="26" y="106" width="85" height="10" fill="#b91c1c"/>
+      <text x="68" y="114" font-family="monospace" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">SKLEP SPOŻYWCZY</text>
+      <rect x="125" y="112" width="28" height="48" fill="#451a03" stroke="#000" stroke-width="2"/>
+
+      <!-- 2. Przystanek Autobusowy ZTM Gliwice z wiatą i znakiem D-15 -->
+      <rect x="225" y="102" width="75" height="58" fill="rgba(56, 189, 248, 0.25)" stroke="#334155" stroke-width="3"/>
+      <rect x="220" y="96" width="85" height="7" fill="#dc2626"/>
+      <rect x="308" y="75" width="4" height="85" fill="#94a3b8"/>
+      <rect x="300" y="62" width="20" height="22" fill="#2563eb" stroke="#fff" stroke-width="2"/>
+      <text x="310" y="76" font-family="monospace" font-size="9" font-weight="bold" fill="#fff" text-anchor="middle">BUS</text>
+
+      <!-- 3. Elegancka kamienica secesyjna przy ul. Zwycięstwa -->
+      <rect x="340" y="38" width="165" height="122" fill="#d6d3d1" stroke="#18181b" stroke-width="2"/>
+      <polygon points="336,38 422,14 509,38" fill="#7f1d1d" stroke="#18181b" stroke-width="2"/>
+      <rect x="356" y="52" width="24" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+      <rect x="396" y="52" width="24" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+      <rect x="436" y="52" width="24" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+      <rect x="472" y="52" width="22" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+      <rect x="356" y="94" width="24" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+      <rect x="396" y="94" width="24" height="30" fill="#fde047" stroke="#44403c" stroke-width="2"/>
+      <rect x="436" y="94" width="24" height="30" fill="#0f172a" stroke="#44403c" stroke-width="2"/>
+
+      <!-- 4. Sygnalizacja świetlna i znak przejścia dla pieszych D-6 -->
+      <rect x="535" y="68" width="5" height="92" fill="#475569"/>
+      <rect x="528" y="48" width="18" height="38" fill="#18181b" stroke="#e2e8f0" stroke-width="1.5"/>
+      <circle cx="537" cy="56" r="4" fill="#ef4444"/>
+      <circle cx="537" cy="67" r="4" fill="#eab308"/>
+      <circle cx="537" cy="78" r="4" fill="#22c55e"/>
+
+      <!-- 5. Szklana fasada CH Forum & Drzewa Parku Chrobrego -->
+      <rect x="575" y="52" width="185" height="108" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+      <line x1="620" y1="52" x2="620" y2="160" stroke="#1e293b" stroke-width="3"/>
+      <line x1="665" y1="52" x2="665" y2="160" stroke="#1e293b" stroke-width="3"/>
+      <line x1="710" y1="52" x2="710" y2="160" stroke="#1e293b" stroke-width="3"/>
+      <rect x="595" y="64" width="145" height="20" fill="#ea580c"/>
+      <text x="667" y="78" font-family="monospace" font-weight="bold" font-size="12" fill="#fff" text-anchor="middle">FORUM GLIWICE</text>
+
+      <!-- Drzewa miejskie i latarnia uliczna -->
+      <rect x="815" y="105" width="10" height="55" fill="#451a03"/>
+      <circle cx="820" cy="88" r="32" fill="#15803d" stroke="#052e16" stroke-width="2"/>
+      <circle cx="805" cy="96" r="22" fill="#16a34a"/>
+
+      <!-- Chodnik z płyt betonowych i krawężnik -->
+      <rect x="0" y="160" width="900" height="22" fill="#94a3b8" stroke="#475569" stroke-width="2"/>
+      <rect x="0" y="182" width="900" height="13" fill="#64748b"/>
+    </svg>
+  `;
+  return streetScene + streetScene;
+}
+
+function getBusA4DetailedSvg(lineCode = "A4", destName = "GLIWICE") {
+  return `<svg viewBox="0 0 480 145" width="100%" height="100%" shape-rendering="crispEdges">
+    <ellipse cx="240" cy="134" rx="225" ry="7" fill="rgba(0,0,0,0.65)"/>
+    <rect x="75" y="14" width="68" height="10" fill="#e2e8f0" stroke="#090d16" stroke-width="2"/>
+    <rect x="275" y="14" width="68" height="10" fill="#e2e8f0" stroke="#090d16" stroke-width="2"/>
+    <rect x="16" y="24" width="448" height="88" rx="8" fill="#facc15" stroke="#090d16" stroke-width="3.5"/>
+    <rect x="16" y="88" width="448" height="24" fill="#dc2626" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="20" y="38" width="440" height="44" fill="#0f172a"/>
+    <rect x="216" y="25" width="32" height="86" fill="#334155" stroke="#090d16" stroke-width="2.5"/>
+    <rect x="260" y="26" width="145" height="12" fill="#050b14" stroke="#334155" stroke-width="1.5"/>
+    <text x="332" y="35" font-family="monospace" font-weight="bold" font-size="9" fill="#fde047" text-anchor="middle">${lineCode} ➔ ${destName.slice(0, 13)}</text>
+    <rect x="415" y="26" width="44" height="14" fill="#050b14" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="437" y="36" font-family="monospace" font-weight="bold" font-size="11" fill="#fde047" text-anchor="middle">${lineCode}</text>
+    <rect x="30" y="42" width="46" height="34" fill="#38bdf8" opacity="0.85" stroke="#090d16" stroke-width="2"/>
+    <rect x="82" y="42" width="48" height="34" fill="#38bdf8" opacity="0.85" stroke="#090d16" stroke-width="2"/>
+    <rect x="136" y="42" width="36" height="66" fill="#1e293b" stroke="#090d16" stroke-width="2"/>
+    <rect x="254" y="42" width="52" height="34" fill="#38bdf8" opacity="0.85" stroke="#090d16" stroke-width="2"/>
+    <rect x="312" y="42" width="52" height="34" fill="#38bdf8" opacity="0.85" stroke="#090d16" stroke-width="2"/>
+    <rect x="370" y="42" width="36" height="66" fill="#1e293b" stroke="#090d16" stroke-width="2"/>
+    <rect x="412" y="42" width="46" height="38" fill="#bae6fd" stroke="#090d16" stroke-width="2"/>
+    <text x="85" y="103" font-family="monospace" font-weight="bold" font-size="11" fill="#ffffff">ZTM METROPOLIA • PKM GLIWICE</text>
+    <circle cx="88" cy="114" r="20" fill="#111827" stroke="#000" stroke-width="3"/>
+    <circle cx="88" cy="114" r="9" fill="#94a3b8"/>
+    <circle cx="192" cy="114" r="20" fill="#111827" stroke="#000" stroke-width="3"/>
+    <circle cx="192" cy="114" r="9" fill="#94a3b8"/>
+    <circle cx="342" cy="114" r="20" fill="#111827" stroke="#000" stroke-width="3"/>
+    <circle cx="342" cy="114" r="9" fill="#94a3b8"/>
+  </svg>`;
+}
+
+// ============================================================================
+// ŚCISŁY GRAF CHODNIKÓW I PRZEJŚĆ DLA PIESZYCH WG GOOGLE MAPS (PUNKT 2)
+// Postać porusza się wyłącznie po połączonych krawędziach chodnika (Edge-Walker)
+// i skręca tylko na węzłach skrzyżowań / pasach – fizycznie nie może wejść w budynek!
+// ============================================================================
+
+const SIDEWALK_NODES = {
+  n_zsti:       { coords: [50.29835, 18.69470], name: "Chodnik przed ZSTI (ul. Chorzowska 5)" },
+  n_chorz_zabr: { coords: [50.29812, 18.69115], crosswalk: true, name: "Przejście dla pieszych Chorzowska / Zabrska" },
+  n_zabr_jag:   { coords: [50.29795, 18.68810], crosswalk: true, name: "Skrzyżowanie Zabrska / Jagiellońska" },
+  n_lipowa_s:   { coords: [50.29855, 18.68450], crosswalk: true, name: "Przejście ul. Lipowa" },
+  n_forum:      { coords: [50.29940, 18.68200], name: "Wejście piesze CH Forum Gliwice" },
+  n_pkp_pl:     { coords: [50.30055, 18.67620], crosswalk: true, name: "Przejście przed Dworcem PKP" },
+  n_zwyc_n:     { coords: [50.29880, 18.67355], crosswalk: true, name: "Chodnik ul. Zwycięstwa (Most nad Kłodnicą)" },
+  n_habib:      { coords: [50.29660, 18.67010], name: "Chodnik ul. Zwycięstwa 36 (Kebab Habib)" },
+  n_rynek:      { coords: [50.29420, 18.66640], crosswalk: true, name: "Chodnik przy Rynku" },
+  n_czest:      { coords: [50.29370, 18.67385], crosswalk: true, name: "Przejście ul. Częstochowska" },
+  n_aei:        { coords: [50.29040, 18.67810], crosswalk: true, name: "Deptak ul. Akademicka (Politechnika)" },
+  n_chrobrego:  { coords: [50.28765, 18.68380], name: "Alejka Parku Chrobrego (Wielki Pajączek)" },
+  n_arena:      { coords: [50.28900, 18.69040], name: "Promenada PreZero Areny Gliwice" },
+  n_okrzei_s:   { coords: [50.30210, 18.69290], crosswalk: true, name: "Przejście ul. Okrzei" },
+  n_stadium:    { coords: [50.30660, 18.69560], name: "Promenada Stadionu Piasta Gliwice (ul. Okrzei 20)" }
+};
+
+const SIDEWALK_EDGES = [
+  ['n_zsti', 'n_chorz_zabr'],
+  ['n_chorz_zabr', 'n_zabr_jag'],
+  ['n_zabr_jag', 'n_lipowa_s'],
+  ['n_lipowa_s', 'n_forum'],
+  ['n_forum', 'n_pkp_pl'],
+  ['n_pkp_pl', 'n_zwyc_n'],
+  ['n_zwyc_n', 'n_habib'],
+  ['n_habib', 'n_rynek'],
+  ['n_habib', 'n_czest'],
+  ['n_czest', 'n_aei'],
+  ['n_aei', 'n_chrobrego'],
+  ['n_chrobrego', 'n_arena'],
+  ['n_chorz_zabr', 'n_okrzei_s'],
+  ['n_okrzei_s', 'n_stadium']
+];
+
+// Stan poruszania się ściśle po krawędzi chodnika
+let walkerState = {
+  edgeIdx: 0, // Krawędź ['n_zsti', 'n_chorz_zabr']
+  t: 0.0      // Pozycja na krawędzi 0.0 (węzeł A) .. 1.0 (węzeł B)
+};
+
+function getWalkerLatLng() {
+  const [idA, idB] = SIDEWALK_EDGES[walkerState.edgeIdx];
+  const A = SIDEWALK_NODES[idA].coords;
+  const B = SIDEWALK_NODES[idB].coords;
+  return [
+    A[0] + (B[0] - A[0]) * walkerState.t,
+    A[1] + (B[1] - A[1]) * walkerState.t
+  ];
+}
+
+function teleportWalkerToNode(nodeId) {
+  for (let i = 0; i < SIDEWALK_EDGES.length; i++) {
+    if (SIDEWALK_EDGES[i][0] === nodeId) {
+      walkerState.edgeIdx = i;
+      walkerState.t = 0.0;
+      gameState.heroPos = getWalkerLatLng();
+      return;
+    }
+    if (SIDEWALK_EDGES[i][1] === nodeId) {
+      walkerState.edgeIdx = i;
+      walkerState.t = 1.0;
+      gameState.heroPos = getWalkerLatLng();
+      return;
+    }
+  }
+}
+
+// Funkcja przesuwająca gracza wyłącznie wzdłuż aktualnego chodnika i przełączająca chodnik tylko na skrzyżowaniu/pasach
+function stepWalkerAlongSidewalk(inputLatDir, inputLngDir) {
+  const [idA, idB] = SIDEWALK_EDGES[walkerState.edgeIdx];
+  const A = SIDEWALK_NODES[idA].coords;
+  const B = SIDEWALK_NODES[idB].coords;
+
+  const edgeVecLat = B[0] - A[0];
+  const edgeVecLng = B[1] - A[1];
+  const edgeLen = Math.hypot(edgeVecLat, edgeVecLng);
+  if (edgeLen === 0) return;
+
+  const normLat = edgeVecLat / edgeLen;
+  const normLng = edgeVecLng / edgeLen;
+
+  // Rzut wektora klawiszy WSAD na kierunek chodnika
+  const dot = inputLatDir * normLat + inputLngDir * normLng;
+  const stepMeters = 0.000042;
+  const dt = (dot * stepMeters) / edgeLen;
+
+  walkerState.t += dt;
+
+  // Jeśli doszliśmy do węzła skrzyżowania A (t <= 0) lub B (t >= 1), sprawdź sąsiednie chodniki w kierunku ruchu
+  if (walkerState.t <= 0) {
+    walkerState.t = 0;
+    trySwitchEdgeAtNode(idA, inputLatDir, inputLngDir);
+  } else if (walkerState.t >= 1) {
+    walkerState.t = 1;
+    trySwitchEdgeAtNode(idB, inputLatDir, inputLngDir);
+  }
+
+  gameState.heroPos = getWalkerLatLng();
+}
+
+function trySwitchEdgeAtNode(nodeId, inLat, inLng) {
+  const origin = SIDEWALK_NODES[nodeId].coords;
+  let bestEdge = -1;
+  let bestStartT = 0;
+  let bestAlign = 0.15;
+
+  SIDEWALK_EDGES.forEach((edge, idx) => {
+    if (edge[0] === nodeId || edge[1] === nodeId) {
+      const otherId = edge[0] === nodeId ? edge[1] : edge[0];
+      const target = SIDEWALK_NODES[otherId].coords;
+      const vLat = target[0] - origin[0];
+      const vLng = target[1] - origin[1];
+      const len = Math.hypot(vLat, vLng);
+      const align = (inLat * (vLat / len)) + (inLng * (vLng / len));
+      if (align > bestAlign) {
+        bestAlign = align;
+        bestEdge = idx;
+        bestStartT = edge[0] === nodeId ? 0.02 : 0.98;
+      }
+    }
+  });
+
+  if (bestEdge !== -1) {
+    walkerState.edgeIdx = bestEdge;
+    walkerState.t = bestStartT;
+  }
+}
+
+// ============================================================================
+// 6 LOKALIZACJI FABULARNYCH (W TYM PARK CHROBREGO I ULEPSZONE MINIGRY)
+// ============================================================================
+
+const STORY_LOCATIONS = [
+  {
+    id: 0,
+    nodeId: 'n_zsti',
+    name: "1. ZSTI Gliwice",
+    shortName: "ZSTI Gliwice",
+    address: "ul. Chorzowska 5",
+    coords: [50.29835, 18.69470],
+    busLine: "A4",
+    themeClass: "theme-zsti",
+    sceneClass: "scene-bg-zsti",
+    roomBanner: "PRACOWNIA SIECIOWA SALA 204 — ZSTI GLIWICE",
+    npcName: "Pan Łukasz Kornaś",
+    npcSprite: "kornas",
+    type: "binary_kornas",
+    pinSvg: "💻",
+    minigameTitle: "Autoryzacja Serwera ZSTI (3 Pakiety Binarne)",
+    minigameRules: "Przepisz bezbłędnie 3 kolejne pakiety kodu binarnego na terminalu sieciowym. Na każdy pakiet masz 10 sekund.",
+    controlHint: "Klawiatura (0, 1 + Enter)",
+    goalHint: "3/3 pakiety w 10 s",
+    richHistory: `<b>Zespół Szkół Techniczno-Informatycznych w Gliwicach (ul. Chorzowska 5)</b> to czołowa szkoła techniczna kształcąca programistów, techników informatyków i elektroników. W ceglanym gmachu znajdują się nowoczesne pracownie sieciowe oraz serwerownie.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Cześć! Dobrze, że jesteś w pracowni sieciowej ZSTI przy ul. Chorzowskiej 5." },
+      { speaker: 'npc', text: "Zanim ruszysz autobusem A4 w miasto, skonfigurujmy ruter brzegowy – przepisz 3 pakiety binarne w 10 sekund na każdy!" },
+      { speaker: 'player', text: "Jasne, Panie Profesorze! Już wpisuję kody binarne na terminalu!" }
+    ],
+    winBubbles: [
+      { speaker: 'npc', text: "Brawo! Wszystkie 3 pakiety binarne przepisane bezbłędnie! Serwer ZSTI działa stabilnie." },
+      { speaker: 'npc', text: "Teraz idź chodnikiem lub jedź autobusem linii A4 do CH Forum Gliwice przy ul. Lipowej 1!" }
+    ],
+    binaryCodes: ["101101", "11001010", "1010110101"]
+  },
+  {
+    id: 1,
+    nodeId: 'n_forum',
+    name: "2. CH Forum Gliwice",
+    shortName: "Forum Gliwice",
+    address: "ul. Lipowa 1",
+    coords: [50.29940, 18.68200],
+    busLine: "A4",
+    themeClass: "theme-forum",
+    sceneClass: "scene-bg-forum",
+    roomBanner: "PARKING PODZIEMNY POZIOM -1 — CH FORUM GLIWICE",
+    npcName: "Dyspozytor Parkingu Forum",
+    npcSprite: "guide",
+    type: "forum_cart",
+    pinSvg: "🛒",
+    minigameTitle: "Slalom Wózkiem Sklepowym w Parkingu Podziemnym",
+    minigameRules: "Prowadź wózek sklepowy po dwupasmowej jezdni podziemnego garażu CH Forum przez 25 sekund. Zachowano bezpieczne odstępy między autami.",
+    controlHint: "Strzałki ◀ ▶ lub klawisze A / D",
+    goalHint: "25 sekund bez kolizji",
+    richHistory: `<b>CH Forum Gliwice (ul. Lipowa 1)</b> posiada rozległy, dwupoziomowy parking podziemny z charakterystycznymi zielono-szarymi zatokami żywicznymi, betonowymi filarami i stanowiskami na wózki sklepowe.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Uwaga na poziomie -1 parkingu CH Forum! Wózek sklepowy z zakupami zjeżdża po wewnętrznej alei!" },
+      { speaker: 'npc', text: "Zmieniaj pas ruchu (LEWY / PRAWY) i omijaj samochody wyjeżdżające z zatok parkingowych!" },
+      { speaker: 'player', text: "Trzymam rączkę wózka! Ominę wszystkie samochody na parkingu!" }
+    ],
+    winBubbles: [
+      { speaker: 'cloud_kuska', text: "Cześć! Tu Daniel Kuśka – zlatuję na chmurce prosto pod sufit parkingu w CH Forum!" },
+      { speaker: 'cloud_kuska', text: "Świetnie opanowałeś ten wózek! Teraz jedź autobusem A4 do PreZero Areny Gliwice przy ul. Akademickiej 50!" }
+    ]
+  },
+  {
+    id: 2,
+    nodeId: 'n_arena',
+    name: "3. PreZero Arena Gliwice",
+    shortName: "PreZero Arena",
+    address: "ul. Akademicka 50",
+    coords: [50.28900, 18.69040],
+    busLine: "A4",
+    themeClass: "theme-arena",
+    sceneClass: "scene-bg-arena",
+    roomBanner: "RING GŁÓWNY — PREZERO ARENA GLIWICE",
+    npcName: "Żelazny Bokser z Areny",
+    npcSprite: "boxer",
+    type: "arena_boxing",
+    pinSvg: "🥊",
+    minigameTitle: "Taktyczny Pojedynek Bokserski w Czasie Rzeczywistym",
+    minigameRules: "Obserwuj ruchy rywala i zarządzaj kondycją (Staminą). Gdy bokser sygnalizuje zamach (czerwony alert), wykonaj UNIK lub GARDĘ, aby odsłonić go na mocną kontrę!",
+    controlHint: "Ciosy + Unik / Garda w tempo",
+    goalHint: "Zbij 300 HP Boksera",
+    richHistory: `<b>PreZero Arena Gliwice (ul. Akademicka 50)</b> to nowoczesna hala widowiskowo-sportowa mieszcząca ponad 17 000 widzów, będąca areną największych gal sportów walki na Śląsku.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Witaj na ringu PreZero Areny! Tutaj bezmyślne machanie rękawicami nic Ci nie da!" },
+      { speaker: 'npc', text: "Pilnuj paska kondycji i reaguj unikiem albo gardą, kiedy biorę zamach na prawy sierpowy!" },
+      { speaker: 'player', text: "Wchodzę na ring! Będę czytał Twoje ciosy i punktował kontrami!" }
+    ],
+    winBubbles: [
+      { speaker: 'cloud_stelmach', text: "Brawo! Tu Damian Stelmach – przylatuję pod kopułę PreZero Areny pogratulować Ci zwycięstwa!" },
+      { speaker: 'cloud_stelmach', text: "Teraz przejdź chodnikiem tuż obok do Parku Chrobrego! Musisz wspiąć się tam na słynnego Wielkiego Pajączka!" }
+    ]
+  },
+  {
+    id: 3,
+    nodeId: 'n_chrobrego',
+    name: "4. Park Chrobrego (Wielki Pajączek)",
+    shortName: "Park Chrobrego",
+    address: "ul. Akademicka / Park Chrobrego (koło Areny)",
+    coords: [50.28765, 18.68380],
+    busLine: "A4",
+    themeClass: "theme-chrobrego",
+    sceneClass: "scene-bg-chrobrego",
+    roomBanner: "STREFA REKREACJI — WIELKI PAJĄCZEK LINOWY W PARKU CHROBREGO",
+    npcName: "Instruktor Wspinaczki w Parku",
+    npcSprite: "guide",
+    type: "spider_climb",
+    pinSvg: "🕸️",
+    minigameTitle: "Wspinaczka na Wielkiego Pajączka Linowego (W, S, A, D)",
+    minigameRules: "Wspinaj się po czerwonych linach wielkiej piramidy w Parku Chrobrego! Wciskaj pojawiające się na ekranie klawisze W, S, A lub D zanim upłynie czas chwytu (14 stopni na szczyt).",
+    controlHint: "Klawisze W, S, A, D (lub przyciski)",
+    goalHint: "14 chwytów na szczyt Pajączka",
+    richHistory: `<b>Park im. Bolesława Chrobrego w Gliwicach</b> sąsiaduje bezpośrednio z PreZero Areną i kampusem Politechniki Śląskiej. Jedną z jego najbardziej charakterystycznych atrakcji jest ogromna, wysoka konstrukcja linowa zwana przez gliwiczan <b>„Wielkim Pajączkiem”</b>.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Witaj w Parku Chrobrego tuż obok PreZero Areny! Przed Tobą nasz słynny Wielki Pajączek linowy!" },
+      { speaker: 'npc', text: "Żeby wspiąć się na sam szczyt piramidy, musisz szybko wciskać wyświetlające się klawisze: W, S, A lub D!" },
+      { speaker: 'player', text: "Patrzę w górę – wysoki ten Pajączek! Zaczynam wspinaczkę po linach!" }
+    ],
+    winBubbles: [
+      { speaker: 'npc', text: "Niesamowita zwinność! Dotarłeś na sam wierzchołek Wielkiego Pajączka w Parku Chrobrego!" },
+      { speaker: 'npc', text: "Teraz jedź autobusem A4 na ulicę Zwycięstwa 36 do restauracji Kebab Habib, gdzie czeka wojownik Adaś!" }
+    ]
+  },
+  {
+    id: 4,
+    nodeId: 'n_habib',
+    name: "5. Kebab Habib (ul. Zwycięstwa)",
+    shortName: "Kebab Habib (Adaś)",
+    address: "ul. Zwycięstwa 36",
+    coords: [50.29660, 18.67010],
+    busLine: "A4",
+    themeClass: "theme-habib",
+    sceneClass: "scene-bg-habib",
+    roomBanner: "RESTAURACJA KEBAB HABIB — ULICA ZWYCIĘSTWA W GLIWICACH",
+    npcName: "Wojownik Adaś (Sztuki Walki)",
+    npcSprite: "adas",
+    type: "habib_kebab",
+    pinSvg: "🥙",
+    minigameTitle: "Pojedynek na Kebaby z Wojownikiem Adasiem",
+    minigameRules: "Masz limit 12 kebabów, by trafić Adasia 8 razy! Obserwuj zegar na tarczy Adasia (pokazuje kiedy tarcza się włączy i odbije Twój rzut) oraz unikaj ostrych kebabów, którymi Adaś rzuca w Ciebie!",
+    controlHint: "A/D (Unik) + Spacja (Rzut)",
+    goalHint: "8 trafień (Limit: 12 kebabów)",
+    richHistory: `<b>Restauracja Kebab Habib przy ulicy Zwycięstwa</b> to kultowy punkt w samym sercu Gliwic. Trenuje tu chłopiec o imieniu <b>Adaś</b>, który łączy mistrzostwo sztuk walki z błyskawicznym rzucaniem i odbijaniem kebabów.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Siema! Jestem Adaś z Kebaba Habib na Zwycięstwa! Tym razem nie będzie tak łatwo!" },
+      { speaker: 'npc', text: "Masz tylko 12 kebabów w torbie, ja sam rzucam w Ciebie ostrymi rollo, a licznik nad moją tarczą pokazuje, kiedy odbiję Twój strzał!" },
+      { speaker: 'player', text: "Będę pilnował timera Twojej tarczy i unikał Twoich rzutów!" }
+    ],
+    winBubbles: [
+      { speaker: 'npc', text: "Szacunek! Wyliczyłeś co do ułamka sekundy moją tarczę i ominąłeś wszystkie moje rzuty kebabem!" },
+      { speaker: 'npc', text: "Czas na wielki FINAŁ: jedź autobusem A4 na Stadion Piasta Gliwice przy ul. Okrzei na mecz Piast – Górnik!" }
+    ]
+  },
+  {
+    id: 5,
+    nodeId: 'n_stadium',
+    name: "6. Stadion Piasta Gliwice (FINAŁ: PIAST – GÓRNIK)",
+    shortName: "Stadion Piasta (Finał)",
+    address: "ul. Stefana Okrzei 20",
+    coords: [50.30660, 18.69560],
+    busLine: "A4",
+    themeClass: "theme-stadium",
+    sceneClass: "scene-bg-stadium",
+    roomBanner: "MURAWA STADIONU PRZY OKRZEI — MECZ 3v3: PIAST GLIWICE vs GÓRNIK ZABRZE",
+    npcName: "Kapitan Drużyny Rywali",
+    npcSprite: "gornik_captain",
+    type: "piast_match",
+    pinSvg: "⚽",
+    minigameTitle: "Wielkie Derby 3v3 z Botami AI: Piast Gliwice vs Górnik Zabrze",
+    minigameRules: "Pełny mecz na murawie! Biegaj w 4 kierunkach (WSAD), podawaj piłkę do 2 botów ze swojej drużyny Piasta (klawisz E), odbieraj piłkę rywalom i strzel 3 gole (SPACJA), zanim Górnik strzeli 3 bramki!",
+    controlHint: "WSAD (Bieg) + E (Podaj) + Spacja (Strzał/Odbiór)",
+    goalHint: "Wygraj mecz do 3 bramek",
+    richHistory: `<b>Stadion Miejski im. Piotra Wieczorka w Gliwicach (ul. Okrzei 20)</b> to domowa arena <b>Piasta Gliwice</b>. Zwycięstwo w derbach z Górnikiem Zabrze daje upragniony Złoty Puchar Gliwic i wieńczy grę.`,
+    introBubbles: [
+      { speaker: 'npc', text: "Wchodzisz na murawę Stadionu przy Okrzei! Gramy pełny mecz 3 na 3 z botami na całym boisku!" },
+      { speaker: 'npc', text: "Moi zawodnicy podają między sobą i atakują bramkę Piasta. Pierwsza drużyna z 3 golami zdobywa Puchar!" },
+      { speaker: 'player', text: "Gramy zespołowo z botami Piasta! Puchar zostaje w Gliwicach!" }
+    ],
+    winBubbles: [
+      { speaker: 'npc', text: "Co za akcje zespołowe i podania! Piast Gliwice wygrywa Wielkie Derby na Stadionie przy Okrzei!" },
+      { speaker: 'player', text: "Mamy to! Złoty Puchar Gliwic trafia w nasze ręce!" }
+    ]
+  }
+];
+
+const GLIWICE_LANDMARKS = [
+  { name: "Radiostacja Gliwicka (111m)", coords: [50.3133, 18.6890], icon: "🗼", desc: "Najwyższa drewniana konstrukcja na świecie (111 m) z 1935 roku." },
+  { name: "Rynek i Fontanna Neptuna", coords: [50.2942, 18.6664], icon: "⛲", desc: "Historyczne serce Gliwic z Ratuszem oraz Fontanną Neptuna z 1794 roku." },
+  { name: "Zamek Piastowski", coords: [50.2928, 18.6638], icon: "🏰", desc: "Średniowieczny zamek z XIV wieku przy ul. Pod Murami." },
+  { name: "Palmiarnia Miejska", coords: [50.2995, 18.6673], icon: "🌴", desc: "Pięć szklanych pawilonów z tropikalnymi roślinami i akwariami w Parku Chopina." },
+  { name: "Politechnika Śląska (AEI)", coords: [50.2887, 18.6774], icon: "🎓", desc: "Kampus akademicki przy ul. Akademickiej założony w 1945 roku." },
+  { name: "Willa Caro", coords: [50.2916, 18.6685], icon: "🏛️", desc: "XIX-wieczna rezydencja Oscara Caro – siedziba Muzeum w Gliwicach." },
+  { name: "Dworzec PKP Gliwice", coords: [50.30055, 18.6762], icon: "🚆", desc: "Główny węzeł kolejowy Gliwic połączony z Centrum Przesiadkowym." }
+];
+
+// ============================================================================
+// STAN GRY, AUDIO I SYSTEM DYMKÓW CZATU WYCHODZĄCYCH Z UST
+// ============================================================================
+
+let map = null;
+let heroMarker = null;
+let locationMarkers = [];
+let talkingInterval = null;
+
+let gameState = {
+  started: false,
+  lives: 3,
+  maxLives: 3,
+  score: 0,
+  currentChapter: 0,
+  completedIds: [],
+  heroPos: [50.29835, 18.69470],
+  soundOn: true,
+  moveKeys: { up: false, down: false, left: false, right: false }
+};
+
+let audioCtx = null;
+function playTone(freq, duration = 0.1, type = 'triangle') {
+  if (!gameState.soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+function toggleAudio() {
+  gameState.soundOn = !gameState.soundOn;
+  document.getElementById('audio-btn').textContent = gameState.soundOn ? '🔊 DŹWIĘK' : '🔇 WYCISZONO';
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast-banner');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => el.classList.add('hidden'), 3800);
+}
+
+function playMultiBubbleDialogue(bubblesArray, onCompleteCallback) {
+  let stepIdx = 0;
+
+  const playerCard = document.getElementById('int-player-card');
+  const npcCard = document.getElementById('int-npc-card');
+  const cloudCard = document.getElementById('int-cloud-guest');
+
+  const pBubble = document.getElementById('player-mouth-bubble');
+  const pText = document.getElementById('player-bubble-text');
+  const pStep = document.getElementById('player-bubble-step');
+  const pNext = document.getElementById('player-bubble-next');
+
+  const nBubble = document.getElementById('npc-mouth-bubble');
+  const nText = document.getElementById('npc-bubble-text');
+  const nStep = document.getElementById('npc-bubble-step');
+  const nNext = document.getElementById('npc-bubble-next');
+
+  function stopTalkingAnim() {
+    if (talkingInterval) clearInterval(talkingInterval);
+    talkingInterval = null;
+    playerCard.classList.remove('is-talking');
+    npcCard.classList.remove('is-talking');
+    cloudCard.classList.remove('is-talking');
+  }
+
+  function showBubbleStep() {
+    stopTalkingAnim();
+    pBubble.classList.add('hidden');
+    nBubble.classList.add('hidden');
+
+    if (stepIdx >= bubblesArray.length) {
+      if (onCompleteCallback) onCompleteCallback();
+      return;
+    }
+
+    const item = bubblesArray[stepIdx];
+    const isPlayer = item.speaker === 'player';
+
+    if (item.speaker === 'cloud_kuska' || item.speaker === 'cloud_stelmach') {
+      const personKey = item.speaker === 'cloud_kuska' ? 'kuska' : 'stelmach';
+      document.getElementById('int-cloud-svg').innerHTML = getCloudMessengerSvg(personKey);
+      document.getElementById('int-cloud-name').textContent = personKey === 'kuska' ? 'Pan Daniel Kuśka' : 'Pan Damian Stelmach';
+      cloudCard.classList.remove('hidden');
+    }
+
+    const activeBubble = isPlayer ? pBubble : nBubble;
+    const activeTextEl = isPlayer ? pText : nText;
+    const activeStepEl = isPlayer ? pStep : nStep;
+    const activeBtnEl = isPlayer ? pNext : nNext;
+    const activeCharCard = isPlayer ? playerCard : (item.speaker.startsWith('cloud') ? cloudCard : npcCard);
+
+    activeBubble.classList.remove('hidden');
+    activeCharCard.classList.add('is-talking');
+    activeStepEl.textContent = `Wiadomość ${stepIdx + 1}/${bubblesArray.length}`;
+    activeBtnEl.textContent = stepIdx < bubblesArray.length - 1 ? 'DALEJ ▶' : 'OTWÓRZ ZADANIE ✔';
+
+    activeTextEl.textContent = '';
+    let c = 0;
+    talkingInterval = setInterval(() => {
+      if (c < item.text.length) {
+        activeTextEl.textContent += item.text[c];
+        if (c % 4 === 0) playTone(isPlayer ? 420 : 310, 0.025, 'square');
+        c++;
+      } else {
+        stopTalkingAnim();
+      }
+    }, 18);
+
+    activeBtnEl.onclick = () => {
+      playTone(520, 0.05);
+      stepIdx++;
+      showBubbleStep();
+    };
+  }
+
+  showBubbleStep();
+}
+
+// ============================================================================
+// INICJALIZACJA MAPY SATELITARNEJ, CHODNIKÓW I PRZEJŚĆ DLA PIESZYCH (ZEBR)
+// ============================================================================
+
+function initSatelliteMap() {
+  map = L.map('map', {
+    center: [50.29835, 18.69470],
+    zoom: 16,
+    minZoom: 14,
+    maxZoom: 19,
+    zoomControl: false
+  });
+
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Mapa satelitarna © Esri — Chodniki i przejścia dla pieszych Gliwice',
+    maxZoom: 19
+  }).addTo(map);
+
+  L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    opacity: 0.88
+  }).addTo(map);
+
+  // Rysowanie chodników (Sidewalks) łączących wszystkie punkty
+  SIDEWALK_EDGES.forEach(([idA, idB]) => {
+    const seg = [SIDEWALK_NODES[idA].coords, SIDEWALK_NODES[idB].coords];
+    L.polyline(seg, { color: '#0f172a', weight: 9, opacity: 0.78 }).addTo(map);
+    L.polyline(seg, { color: '#60a5fa', weight: 3.5, dashArray: '5, 7', opacity: 0.95 }).addTo(map);
+  });
+
+  // Rysowanie widocznych przejść dla pieszych (Zebr) na skrzyżowaniach
+  Object.values(SIDEWALK_NODES).forEach(node => {
+    if (node.crosswalk) {
+      const zIcon = L.divIcon({
+        className: '',
+        html: `<div title="${node.name}" style="width:18px;height:12px;background:repeating-linear-gradient(90deg,#fff 0px,#fff 3px,#1e293b 3px,#1e293b 6px);border:1px solid #000;border-radius:2px;box-shadow:0 2px 4px rgba(0,0,0,0.7);"></div>`,
+        iconSize: [18, 12],
+        iconAnchor: [9, 6]
+      });
+      L.marker(node.coords, { icon: zIcon, interactive: false }).addTo(map);
+    }
+  });
+
+  GLIWICE_LANDMARKS.forEach(lm => {
+    const lmIcon = L.divIcon({
+      className: '',
+      html: `<div class="landmark-pin-wrap">
+        <div class="landmark-pin-box"><span style="font-size:15px;">${lm.icon}</span></div>
+        <div class="landmark-pin-label">${lm.name}</div>
+      </div>`,
+      iconSize: [130, 48],
+      iconAnchor: [65, 24]
+    });
+    const m = L.marker(lm.coords, { icon: lmIcon }).addTo(map);
+    m.on('click', () => {
+      showToast(`${lm.icon} ${lm.name}: ${lm.desc}`);
+      playTone(460, 0.08);
+    });
+  });
+
+  const heroIcon = L.divIcon({
+    className: '',
+    html: `<div class="hero-map-marker" id="hero-map-el">
+      <div class="hero-you-badge">TY</div>
+      <div class="hero-sprite-small">${getPlayerSvg(100, false)}</div>
+    </div>`,
+    iconSize: [30, 40],
+    iconAnchor: [15, 35]
+  });
+
+  heroMarker = L.marker(gameState.heroPos, { icon: heroIcon, zIndexOffset: 1000 }).addTo(map);
+
+  renderMapPins();
+  updateTopAndBottomHud();
+}
+
+function renderMapPins() {
+  locationMarkers.forEach(m => map.removeLayer(m));
+  locationMarkers = [];
+
+  STORY_LOCATIONS.forEach((loc, idx) => {
+    const isCompleted = gameState.completedIds.includes(loc.id);
+    const isUnlocked = idx <= gameState.currentChapter;
+
+    let stateClass = '';
+    let centerGraphic = '🔒';
+
+    if (isCompleted) {
+      stateClass = 'completed-quest';
+      centerGraphic = `<span style="font-size:15px;color:#fff;">✔</span>`;
+    } else if (isUnlocked) {
+      stateClass = 'unlocked-quest';
+      centerGraphic = `<span style="font-size:17px;">${loc.pinSvg}</span>`;
+    }
+
+    const pinIcon = L.divIcon({
+      className: '',
+      html: `<div class="loc-pin-wrap ${stateClass}">
+        <div class="loc-pin-badge">${loc.shortName}</div>
+        <div class="loc-pin-circle">${centerGraphic}</div>
+      </div>`,
+      iconSize: [130, 56],
+      iconAnchor: [65, 48]
+    });
+
+    const marker = L.marker(loc.coords, { icon: pinIcon, zIndexOffset: 500 }).addTo(map);
+    marker.on('click', () => onLocationPinClick(idx));
+    locationMarkers.push(marker);
+  });
+}
+
+function onLocationPinClick(idx) {
+  const loc = STORY_LOCATIONS[idx];
+  if (idx > gameState.currentChapter) {
+    showToast(`🔒 Najpierw ukończ bieżący etap: ${STORY_LOCATIONS[gameState.currentChapter].shortName}!`);
+    playTone(220, 0.14, 'sawtooth');
+    return;
+  }
+
+  const dist = calcDistanceMeters(gameState.heroPos, loc.coords);
+  if (dist > 110) {
+    triggerBusCutsceneTo(idx);
+  } else {
+    openInteriorModal(idx);
+  }
+}
+
+// ============================================================================
+// AKTUALIZACJA HUD
+// ============================================================================
+
+function updateTopAndBottomHud() {
+  const heartsEl = document.getElementById('hearts-container');
+  heartsEl.innerHTML = '';
+  for (let i = 0; i < gameState.maxLives; i++) {
+    const lost = i >= gameState.lives ? 'lost' : '';
+    heartsEl.innerHTML += `<svg class="heart-svg ${lost}" viewBox="0 0 24 24">
+      <path fill="#ef4444" stroke="#000" stroke-width="2"
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+    </svg>`;
+  }
+
+  document.getElementById('score-val').textContent = gameState.score;
+  const chapNum = Math.min(gameState.currentChapter + 1, STORY_LOCATIONS.length);
+  document.getElementById('chapter-val').textContent = `${chapNum} / ${STORY_LOCATIONS.length}`;
+
+  const activeLoc = STORY_LOCATIONS[Math.min(gameState.currentChapter, STORY_LOCATIONS.length - 1)];
+  document.getElementById('hud-chapter-title').textContent = `ETAP ${chapNum}/${STORY_LOCATIONS.length}: ${activeLoc.name.toUpperCase()}`;
+
+  const dist = calcDistanceMeters(gameState.heroPos, activeLoc.coords);
+  const dockTitle = document.getElementById('dock-loc-name');
+  const dockDesc = document.getElementById('dock-loc-desc');
+  const dockBtn = document.getElementById('dock-enter-btn');
+
+  dockTitle.textContent = `${activeLoc.name} (${activeLoc.address})`;
+
+  if (dist <= 110) {
+    document.getElementById('hud-objective-text').textContent = `Jesteś na miejscu! Wejdź do: ${activeLoc.shortName}`;
+    document.getElementById('hud-sub-text').textContent = `Kliknij przycisk „WEJDŹ DO ŚRODKA” na dolnym pasku`;
+    dockDesc.textContent = activeLoc.minigameTitle;
+    dockBtn.textContent = `🚪 WEJDŹ DO ŚRODKA`;
+    dockBtn.classList.add('enter-ready');
+  } else {
+    document.getElementById('hud-objective-text').textContent = `Przejdź chodnikiem lub jedź autobusem A4 do: ${activeLoc.shortName}`;
+    document.getElementById('hud-sub-text').textContent = `Dystans wzdłuż ulic: ${Math.round(dist)} m`;
+    dockDesc.textContent = `Cel odblokowany (${activeLoc.address}). Możesz przejść po chodnikach i pasach lub podjechać linią A4.`;
+    dockBtn.textContent = `🚌 JEDŹ AUTOBUSEM A4`;
+    dockBtn.classList.remove('enter-ready');
+  }
+}
+
+function handleMainDockAction() {
+  const idx = Math.min(gameState.currentChapter, STORY_LOCATIONS.length - 1);
+  const loc = STORY_LOCATIONS[idx];
+  const dist = calcDistanceMeters(gameState.heroPos, loc.coords);
+
+  if (dist <= 110) {
+    openInteriorModal(idx);
+  } else {
+    triggerBusCutsceneTo(idx);
+  }
+}
+
+function centerOnCurrentObjective() {
+  const loc = STORY_LOCATIONS[Math.min(gameState.currentChapter, STORY_LOCATIONS.length - 1)];
+  map.flyTo(loc.coords, 17, { duration: 0.8 });
+}
+
+// ============================================================================
+// SCENKA PRZEJAZDU AUTOBUSEM A4
+// ============================================================================
+
+function triggerBusCutsceneTo(targetIdx) {
+  const targetLoc = STORY_LOCATIONS[targetIdx];
+  const modal = document.getElementById('bus-cutscene-modal');
+  document.getElementById('bus-line-label').textContent = `LINIA ${targetLoc.busLine} — PKM GLIWICE`;
+  document.getElementById('bus-route-title').textContent = `Kierunek: ${targetLoc.shortName} (${targetLoc.address})`;
+  document.getElementById('bus-scrolling-bg').innerHTML = getScrollingGliwiceBuildingsHtml();
+  document.getElementById('bus-svg-holder').innerHTML = getBusA4DetailedSvg(targetLoc.busLine, targetLoc.shortName.toUpperCase());
+
+  modal.classList.remove('hidden');
+  playTone(310, 0.18, 'sawtooth');
+  setTimeout(() => playTone(440, 0.2, 'triangle'), 260);
+
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    teleportWalkerToNode(targetLoc.nodeId);
+    heroMarker.setLatLng(gameState.heroPos);
+    map.setView(gameState.heroPos, 17, { animate: true });
+    updateTopAndBottomHud();
+    showToast(`🚌 Wysiadłeś z autobusu A4 na chodniku przed: ${targetLoc.shortName}`);
+    setTimeout(() => openInteriorModal(targetIdx), 350);
+  }, 2800);
+}
+
+function openBusScheduleModal() {
+  const listEl = document.getElementById('bus-stops-list');
+  listEl.innerHTML = '';
+
+  STORY_LOCATIONS.forEach((loc, idx) => {
+    const isDone = gameState.completedIds.includes(loc.id);
+    const isUnlocked = idx <= gameState.currentChapter;
+
+    const item = document.createElement('div');
+    item.className = `guide-item ${idx === gameState.currentChapter ? 'active-stop' : ''} ${isDone ? 'done-stop' : ''}`;
+
+    let statusBadge = '';
+    if (isDone) {
+      statusBadge = `<button class="hud-btn bus-btn" onclick="closeBusScheduleModal(); triggerBusCutsceneTo(${idx});">✔ UKOŃCZONE (Jedź A4)</button>`;
+    } else if (isUnlocked) {
+      statusBadge = `<button class="hud-btn bus-btn" onclick="closeBusScheduleModal(); triggerBusCutsceneTo(${idx});">${loc.pinSvg} JEDŹ LINIA A4</button>`;
+    } else {
+      statusBadge = `<span style="font-size:11px;color:#9ca3af;font-family:'JetBrains Mono',monospace;">NIEDOSTĘPNE</span>`;
+    }
+
+    item.innerHTML = `
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13.5px;color:${isDone ? '#10b981' : (isUnlocked ? '#f9fafb' : '#9ca3af')};">
+          ${loc.name} — <span style="font-size:12px;color:#9ca3af;">${loc.address}</span>
+        </div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:3px;">${loc.minigameTitle}</div>
+      </div>
+      <div>${statusBadge}</div>
+    `;
+    listEl.appendChild(item);
+  });
+
+  document.getElementById('schedule-modal').classList.remove('hidden');
+}
+
+function closeBusScheduleModal() {
+  document.getElementById('schedule-modal').classList.add('hidden');
+}
+
+// ============================================================================
+// OTWIERANIE WNĘTRZA I NOWY TECHNICZNY PANEL ZADANIA (BEZ WYGLĄDU KASYNA - PUNKT 4)
+// ============================================================================
+
+let activeMinigameCleanup = null;
+
+function openInteriorModal(idx) {
+  if (activeMinigameCleanup) {
+    activeMinigameCleanup();
+    activeMinigameCleanup = null;
+  }
+
+  const loc = STORY_LOCATIONS[idx];
+  const modal = document.getElementById('interior-modal');
+  const windowBox = document.getElementById('interior-window-box');
+  const sceneBg = document.getElementById('int-scene-bg');
+
+  windowBox.className = `interior-window ${loc.themeClass}`;
+  sceneBg.className = `interior-scene-canvas ${loc.sceneClass}`;
+
+  document.getElementById('int-header-title').textContent = `${loc.name.toUpperCase()} — ${loc.address.toUpperCase()}`;
+  document.getElementById('int-room-banner').textContent = loc.roomBanner;
+
+  document.getElementById('int-player-sprite').innerHTML = getPlayerSvg(100, loc.type === 'arena_boxing');
+  document.getElementById('int-npc-sprite').innerHTML = getNpcSvg(loc.npcSprite, 100);
+  document.getElementById('int-npc-name').textContent = loc.npcName;
+  document.getElementById('int-npc-card').classList.remove('hidden');
+  document.getElementById('int-cloud-guest').classList.add('hidden');
+
+  document.getElementById('int-loc-history').innerHTML = loc.richHistory;
+
+  const container = document.getElementById('int-minigame-container');
+  container.innerHTML = `<div style="text-align:center;padding:12px;color:#9ca3af;font-size:12.5px;">Przeklikaj rozmowę w dymkach powyżej (przycisk <b>DALEJ ▶</b>), aby przejść do szczegółów zadania.</div>`;
+
+  modal.classList.remove('hidden');
+
+  if (gameState.completedIds.includes(loc.id)) {
+    renderAlreadyCompletedView(loc, container);
+  } else {
+    playMultiBubbleDialogue(loc.introBubbles, () => {
+      renderMinigameStartGui(loc, container);
+    });
+  }
+}
+
+function renderMinigameStartGui(loc, container) {
+  container.innerHTML = `
+    <div class="briefing-sheet">
+      <div class="briefing-header">
+        <span>KARTA ZADANIA MIEJSKIEGO // ETAP ${loc.id + 1} Z ${STORY_LOCATIONS.length}</span>
+        <span>STATUS: GOTOWE DO ROZPOCZĘCIA</span>
+      </div>
+      <div class="briefing-content">
+        <div class="briefing-specs">
+          <h3>${loc.minigameTitle}</h3>
+          <p>${loc.minigameRules}</p>
+          <div class="spec-table">
+            <div class="spec-cell">
+              <small>LOKALIZACJA</small>
+              <strong>${loc.shortName}</strong>
+            </div>
+            <div class="spec-cell">
+              <small>STEROWANIE</small>
+              <strong>${loc.controlHint}</strong>
+            </div>
+            <div class="spec-cell">
+              <small>CEL ZADANIA</small>
+              <strong>${loc.goalHint}</strong>
+            </div>
+          </div>
+        </div>
+        <div>
+          <button class="primary-cta-btn" style="width:100%;" id="launch-mg-btn">
+            ROZPOCZNIJ ZADANIE ▶
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('launch-mg-btn').onclick = () => {
+    if (loc.type === 'binary_kornas') setupBinaryMinigame(loc, container);
+    else if (loc.type === 'forum_cart') setupForumCartMinigame(loc, container);
+    else if (loc.type === 'arena_boxing') setupArenaBoxingMinigame(loc, container);
+    else if (loc.type === 'spider_climb') setupSpiderClimbMinigame(loc, container);
+    else if (loc.type === 'habib_kebab') setupHabibKebabMinigame(loc, container);
+    else if (loc.type === 'piast_match') setupPiastMatchMinigame(loc, container);
+  };
+}
+
+function closeInteriorModal() {
+  if (activeMinigameCleanup) {
+    activeMinigameCleanup();
+    activeMinigameCleanup = null;
+  }
+  if (talkingInterval) {
+    clearInterval(talkingInterval);
+    talkingInterval = null;
+  }
+  document.getElementById('interior-modal').classList.add('hidden');
+}
+
+function renderAlreadyCompletedView(loc, container) {
+  const nextIdx = loc.id + 1;
+  const hasNext = nextIdx < STORY_LOCATIONS.length;
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;">
+      <span style="color:#10b981;font-weight:700;font-size:13.5px;">✔ Zadanie w tej lokalizacji zostało ukończone.</span>
+      ${hasNext ? `<button class="primary-cta-btn" onclick="closeInteriorModal(); triggerBusCutsceneTo(${nextIdx});">JEDŹ LINIA A4 DO: ${STORY_LOCATIONS[nextIdx].shortName.toUpperCase()}</button>` : ''}
+    </div>
+  `;
+}
+
+function loseOneHeart(reasonText, loc) {
+  gameState.lives -= 1;
+  playTone(150, 0.35, 'sawtooth');
+  updateTopAndBottomHud();
+
+  if (gameState.lives <= 0) {
+    closeInteriorModal();
+    showEndGameModal(false);
+    return;
+  }
+
+  const container = document.getElementById('int-minigame-container');
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1f2937;border-left:4px solid #ef4444;border-radius:6px;gap:14px;">
+      <div>
+        <div style="color:#f87171;font-weight:700;font-size:13.5px;">Niepowodzenie zadania — utracono 1 życie (Pozostało: ${gameState.lives}/3)</div>
+        <div style="font-size:12.5px;color:#d1d5db;margin-top:2px;">${reasonText}</div>
+      </div>
+      <button class="primary-cta-btn" id="retry-mg-btn">SPRÓBUJ PONOWNIE</button>
+    </div>
+  `;
+  document.getElementById('retry-mg-btn').onclick = () => {
+    document.getElementById('int-player-sprite').innerHTML = getPlayerSvg(100, loc.type === 'arena_boxing');
+    document.getElementById('int-npc-sprite').innerHTML = getNpcSvg(loc.npcSprite, 100);
+    renderMinigameStartGui(loc, container);
+  };
+}
+
+function completeChapterSuccess(loc) {
+  if (!gameState.completedIds.includes(loc.id)) {
+    gameState.completedIds.push(loc.id);
+    gameState.score += 600;
+    if (gameState.currentChapter === loc.id && gameState.currentChapter < STORY_LOCATIONS.length - 1) {
+      gameState.currentChapter += 1;
+    }
+  }
+
+  playTone(587, 0.12);
+  setTimeout(() => playTone(784, 0.25), 130);
+
+  renderMapPins();
+  updateTopAndBottomHud();
+
+  const container = document.getElementById('int-minigame-container');
+  container.innerHTML = `<div style="text-align:center;padding:12px;color:#10b981;font-weight:600;font-size:13px;">Przeklikaj podsumowanie rozmowy w dymkach powyżej (<b>DALEJ ▶</b>)...</div>`;
+
+  playMultiBubbleDialogue(loc.winBubbles, () => {
+    const nextIdx = loc.id + 1;
+    if (nextIdx >= STORY_LOCATIONS.length) {
+      container.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;">
+          <span style="color:#facc15;font-weight:700;font-size:14px;">🏆 Wygrano Wielkie Derby Piast – Górnik! Zdobywasz Puchar Gliwic!</span>
+          <button class="primary-cta-btn" onclick="closeInteriorModal(); showEndGameModal(true);">ODBIERZ PUCHAR I ZAKOŃCZ GRĘ</button>
+        </div>
+      `;
+    } else {
+      const nextLoc = STORY_LOCATIONS[nextIdx];
+      container.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;gap:14px;">
+          <span style="color:#10b981;font-weight:700;font-size:13.5px;">✔ Zadanie zaliczone (+600 PKT). Odblokowano: ${nextLoc.name}</span>
+          <button class="primary-cta-btn" onclick="closeInteriorModal(); triggerBusCutsceneTo(${nextIdx});">
+            🚌 JEDŹ AUTOBUSEM A4 ➔ ${nextLoc.shortName.toUpperCase()}
+          </button>
+        </div>
+      `;
+    }
+  });
+}
+
+// ============================================================================
+// MINIGRA 1: ZSTI GLIWICE — 3 POZIOMY KODU BINARNEGO
+// ============================================================================
+
+function setupBinaryMinigame(loc, container) {
+  let level = 0;
+  let timeLeft = 10.0;
+  let timerId = null;
+
+  function stopTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+  }
+  activeMinigameCleanup = stopTimer;
+
+  function renderBinaryLevel() {
+    stopTimer();
+    timeLeft = 10.0;
+    const targetCode = loc.binaryCodes[level];
+
+    container.innerHTML = `
+      <div class="binary-terminal">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;font-family:'JetBrains Mono',monospace;">
+          <span>PAKIET BINARNY ZSTI: <b style="color:#fff;">${level + 1} / 3</b></span>
+          <span>LIMIT CZASU: <b id="bin-timer-txt" style="color:#38bdf8;">10.0 s</b></span>
+        </div>
+        <div class="binary-timer-bar-bg">
+          <div class="binary-timer-bar-fill" id="bin-timer-bar"></div>
+        </div>
+        <div class="binary-code-display">${targetCode}</div>
+        <input type="text" id="bin-user-input" class="binary-input" placeholder="Przepisz kod 0 i 1..." maxlength="14" autocomplete="off" />
+        <div style="margin-top:12px;">
+          <button class="action-primary-btn" id="bin-submit-btn">ZATWIERDŹ PAKIET ${level + 1}/3</button>
+        </div>
+      </div>
+    `;
+
+    const inputEl = document.getElementById('bin-user-input');
+    const timerTxt = document.getElementById('bin-timer-txt');
+    const timerBar = document.getElementById('bin-timer-bar');
+    const submitBtn = document.getElementById('bin-submit-btn');
+
+    setTimeout(() => inputEl.focus(), 50);
+
+    function verifyInput() {
+      const val = inputEl.value.trim();
+      if (val === targetCode) {
+        stopTimer();
+        playTone(660, 0.12);
+        level += 1;
+        if (level >= 3) completeChapterSuccess(loc);
+        else renderBinaryLevel();
+      } else {
+        stopTimer();
+        loseOneHeart(`Błędny kod binarny (${val || 'brak'}) zamiast ${targetCode}.`, loc);
+      }
+    }
+
+    submitBtn.onclick = verifyInput;
+    inputEl.onkeydown = (e) => { if (e.key === 'Enter') verifyInput(); };
+
+    timerId = setInterval(() => {
+      timeLeft -= 0.1;
+      if (timeLeft <= 0) {
+        stopTimer();
+        loseOneHeart(`Upłynęło 10 sekund na przepisanie kodu binarnego w ZSTI.`, loc);
+        return;
+      }
+      timerTxt.textContent = `${timeLeft.toFixed(1)} s`;
+      timerBar.style.width = `${(timeLeft / 10) * 100}%`;
+    }, 100);
+  }
+
+  renderBinaryLevel();
+}
+
+// ============================================================================
+// MINIGRA 2: PARKING PODZIEMNY CH FORUM 1:1 (WIĘKSZE ODSTĘPY + PIXEL-ART AUTA)
+// ============================================================================
+
+function setupForumCartMinigame(loc, container) {
+  container.innerHTML = `
+    <div class="canvas-mg-wrap">
+      <div style="display:flex;justify-content:space-between;width:100%;max-width:520px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+        <span>PARKING PODZIEMNY CH FORUM (POZIOM -1, SEKTOR B)</span>
+        <span style="color:#38bdf8;">DO WYJAZDU: <b id="cart-time-left">25.0 s</b></span>
+      </div>
+      <canvas id="cartCanvas" class="mg-canvas" width="520" height="280"></canvas>
+      <div style="display:flex;gap:12px;">
+        <button class="hud-btn" id="cart-left-btn">◀ LEWY PAS JEZDNI (A / ◀)</button>
+        <button class="hud-btn" id="cart-right-btn">PRAWY PAS JEZDNI (D / ▶) ▶</button>
+      </div>
+    </div>
+  `;
+
+  const canvas = document.getElementById('cartCanvas');
+  const ctx = canvas.getContext('2d');
+  const timeEl = document.getElementById('cart-time-left');
+
+  const lanes = [205, 315]; // 2 pasy ruchu pośrodku podziemnej hali garażowej
+  let playerLane = 0;
+  let timeRemaining = 25.0;
+  let cars = [];
+  let scrollY = 0;
+  let running = true;
+  let animId = null;
+
+  function setLane(idx) {
+    if (!running) return;
+    playerLane = idx;
+    playTone(390, 0.04);
+  }
+
+  document.getElementById('cart-left-btn').onclick = () => setLane(0);
+  document.getElementById('cart-right-btn').onclick = () => setLane(1);
+
+  function keyHandler(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setLane(0);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setLane(1);
+  }
+  window.addEventListener('keydown', keyHandler);
+
+  // Funkcja dbająca o DUŻE ODSTĘPY pionowe między autami (min. 195 px odstępu!), dzięki czemu zawsze da się przejechać
+  let spawnTimer = setInterval(() => {
+    if (!running) return;
+    const highestCar = cars.reduce((minY, c) => Math.min(minY, c.y), 999);
+    if (highestCar < 130) return; // Zachowaj dużą odległość między kolejnymi samochodami!
+
+    const laneIdx = Math.random() < 0.5 ? 0 : 1;
+    const carModels = [
+      { body: '#dc2626', roof: '#991b1b', plate: 'SG 4120A' },
+      { body: '#2563eb', roof: '#1e40af', plate: 'SG 8891C' },
+      { body: '#e4e4e7', roof: '#a1a1aa', plate: 'SG 7012K' },
+      { body: '#16a34a', roof: '#166534', plate: 'SG 5509M' }
+    ];
+    const model = carModels[Math.floor(Math.random() * carModels.length)];
+    cars.push({
+      lane: laneIdx,
+      y: -80,
+      speed: 2.7 + Math.random() * 0.5,
+      model
+    });
+  }, 1450);
+
+  let clockTimer = setInterval(() => {
+    if (!running) return;
+    timeRemaining -= 0.1;
+    if (timeRemaining <= 0) {
+      cleanupCart();
+      completeChapterSuccess(loc);
+      return;
+    }
+    timeEl.textContent = `${timeRemaining.toFixed(1)} s`;
+  }, 100);
+
+  function cleanupCart() {
+    running = false;
+    clearInterval(spawnTimer);
+    clearInterval(clockTimer);
+    cancelAnimationFrame(animId);
+    window.removeEventListener('keydown', keyHandler);
+  }
+  activeMinigameCleanup = cleanupCart;
+
+  // Dopracowana grafika pixel-art prawdziwego samochodu z lotu ptaka (opony, lusterka, szyby, światła, tablica SG)
+  function drawPixelCar(cx, cy, model, parkedSide = 0) {
+    ctx.save();
+    if (parkedSide !== 0) {
+      ctx.translate(cx, cy);
+      ctx.rotate(parkedSide * Math.PI / 2);
+      cx = 0; cy = 0;
+    }
+
+    // Cień pod autem
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(cx - 26, cy + 4, 52, 66);
+
+    // 4 Opony z bieżnikiem
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(cx - 27, cy + 8, 5, 14);
+    ctx.fillRect(cx + 22, cy + 8, 5, 14);
+    ctx.fillRect(cx - 27, cy + 46, 5, 14);
+    ctx.fillRect(cx + 22, cy + 46, 5, 14);
+
+    // Karoseria główna
+    ctx.fillStyle = model.body;
+    ctx.fillRect(cx - 23, cy, 46, 66);
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - 23, cy, 46, 66);
+
+    // Lusterka boczne
+    ctx.fillStyle = model.body;
+    ctx.fillRect(cx - 28, cy + 22, 5, 6);
+    ctx.fillRect(cx + 23, cy + 22, 5, 6);
+
+    // Szyba przednia, dach i szyba tylna
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cx - 19, cy + 10, 38, 42);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(cx - 17, cy + 36, 34, 14); // Przednia szyba z refleksem
+    ctx.fillStyle = model.roof;
+    ctx.fillRect(cx - 18, cy + 18, 36, 18); // Dach
+
+    // Światła mijania + snop światła na betonie
+    if (parkedSide === 0) {
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.16)';
+      ctx.beginPath();
+      ctx.moveTo(cx - 18, cy + 66);
+      ctx.lineTo(cx - 32, cy + 105);
+      ctx.lineTo(cx + 32, cy + 105);
+      ctx.lineTo(cx + 18, cy + 66);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(cx - 20, cy + 62, 10, 4);
+    ctx.fillRect(cx + 10, cy + 62, 10, 4);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(cx - 20, cy + 1, 9, 3);
+    ctx.fillRect(cx + 11, cy + 1, 9, 3);
+
+    // Tablica rejestracyjna Gliwice (SG)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 9, cy + 62, 18, 4);
+    ctx.restore();
+  }
+
+  // Dopracowany stalowy wózek sklepowy z zakupami w środku
+  function drawDetailedShoppingCart(cx, cy) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(cx - 20, cy + 4, 40, 50);
+
+    // Kółka wózka
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(cx - 21, cy + 2, 5, 8);
+    ctx.fillRect(cx + 16, cy + 2, 5, 8);
+    ctx.fillRect(cx - 21, cy + 42, 5, 8);
+    ctx.fillRect(cx + 16, cy + 42, 5, 8);
+
+    // Kosz stalowy
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.32)';
+    ctx.fillRect(cx - 18, cy + 4, 36, 40);
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - 18, cy + 4, 36, 40);
+
+    // Zakupy wewnątrz kosza (pudełka, napój, bagietka)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(cx - 13, cy + 12, 12, 14);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(cx + 2, cy + 16, 10, 16);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(cx - 8, cy + 28, 16, 10);
+
+    // Siatka druciana
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    for (let gx = -12; gx <= 12; gx += 6) {
+      ctx.beginPath(); ctx.moveTo(cx + gx, cy + 4); ctx.lineTo(cx + gx, cy + 44); ctx.stroke();
+    }
+
+    // Czerwona rączka z zamkiem na monetę 2 zł
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(cx - 22, cy + 47, 44, 6);
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(cx - 4, cy + 46, 8, 6);
+  }
+
+  function loop() {
+    if (!running) return;
+
+    // 1. Szara posadzka żywiczna jezdni CH Forum
+    ctx.fillStyle = '#374151';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Zielone zatoki parkingowe po lewej i prawej stronie (identyczne jak w CH Forum Gliwice)
+    ctx.fillStyle = '#14532d';
+    ctx.fillRect(0, 0, 140, canvas.height);
+    ctx.fillRect(380, 0, 140, canvas.height);
+
+    scrollY = (scrollY + 3.2) % 100;
+
+    for (let y = -100 + scrollY; y < canvas.height + 100; y += 100) {
+      // Białe linie stanowisk postojowych
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(8, y); ctx.lineTo(132, y);
+      ctx.moveTo(388, y); ctx.lineTo(512, y);
+      ctx.stroke();
+
+      // Zaparkowane samochody w zatokach
+      drawPixelCar(70, y + 48, { body: '#475569', roof: '#1e293b' }, 1);
+      drawPixelCar(450, y + 48, { body: '#64748b', roof: '#334155' }, -1);
+
+      // Betonowe filary konstrukcyjne z ukośnymi pasami ostrzegawczymi
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(132, y - 10, 14, 24);
+      ctx.fillRect(374, y - 10, 14, 24);
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(132, y - 2, 14, 8);
+      ctx.fillRect(374, y - 2, 14, 8);
+    }
+
+    // 3. Przerywana linia rozdzielająca DWA PASY RUCHU
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([20, 20]);
+    ctx.lineDashOffset = -scrollY;
+    ctx.beginPath();
+    ctx.moveTo(260, 0);
+    ctx.lineTo(260, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Podświetlany zielony kaseton sufitowy "WYJAZD ↑"
+    ctx.fillStyle = '#064e3b';
+    ctx.fillRect(215, 6, 90, 18);
+    ctx.strokeStyle = '#34d399';
+    ctx.strokeRect(215, 6, 90, 18);
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⬆ WYJAZD UL. LIPOWA', 260, 18);
+
+    // Wózek sklepowy gracza
+    const px = lanes[playerLane];
+    const py = 202;
+    drawDetailedShoppingCart(px, py);
+
+    // Nadjeżdżające samochody
+    for (let i = cars.length - 1; i >= 0; i--) {
+      const c = cars[i];
+      c.y += c.speed;
+      const cx = lanes[c.lane];
+
+      drawPixelCar(cx, c.y, c.model, 0);
+
+      if (c.lane === playerLane && c.y + 60 > py + 4 && c.y + 6 < py + 48) {
+        cleanupCart();
+        loseOneHeart(`Wózek sklepowy zderzył się z samochodem na pasie ruchu w CH Forum.`, loc);
+        return;
+      }
+
+      if (c.y > canvas.height + 80) cars.splice(i, 1);
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ============================================================================
+// MINIGRA 3: PREZERO ARENA — REALISTYCZNY I TRUDNIEJSZY BOKS (STAMINA + TELEGRAPH + UNIKI)
+// ============================================================================
+
+function setupArenaBoxingMinigame(loc, container) {
+  let playerHp = 250;
+  const maxPlayerHp = 250;
+  let playerStamina = 100;
+  let boxerHp = 300;
+  const maxBoxerHp = 300;
+
+  // Stan zachowania boksera: 'guard' (szczelna garda), 'windup' (bierze zamach na potężny cios!), 'stunned' (odsłonięty po Twoim uniku!)
+  let boxerState = 'guard';
+  let playerDefense = 'none'; // 'dodge' lub 'block'
+  let combatLog = "Bokser trzyma gardę. Obserwuj jego ruchy – gdy weźmie zamach, zrób UNIK lub GARDĘ!";
+  let running = true;
+
+  function updateFightersVisualDamage() {
+    const pPct = Math.round((playerHp / maxPlayerHp) * 100);
+    const bPct = Math.round((boxerHp / maxBoxerHp) * 100);
+    document.getElementById('int-player-sprite').innerHTML = getPlayerSvg(pPct, true);
+    document.getElementById('int-npc-sprite').innerHTML = getNpcSvg('boxer', bPct);
+  }
+
+  function triggerFighterAnim(elId, animClass) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.classList.remove('anim-jab-r', 'anim-hook-r', 'anim-uppercut-r', 'anim-enemy-l', 'anim-hit', 'anim-guard');
+    void el.offsetWidth;
+    el.classList.add(animClass);
+  }
+
+  function renderRing() {
+    if (!running) return;
+    const pPct = Math.max(0, Math.round((playerHp / maxPlayerHp) * 100));
+    const bPct = Math.max(0, Math.round((boxerHp / maxBoxerHp) * 100));
+
+    let stateBannerColor = '#9ca3af';
+    let stateBannerText = '🛡️ BOKSER TRZYMA SZCZELNĄ GARDĘ (Ciosy zadają mniejsze obrażenia)';
+    if (boxerState === 'windup') {
+      stateBannerColor = '#ef4444';
+      stateBannerText = '⚠️ UWAGA! BOKSER BIERZE ZAMACH NA SIERPOWY! KLIKNIJ [UNIK] LUB [GARDA]!';
+    } else if (boxerState === 'stunned') {
+      stateBannerColor = '#10b981';
+      stateBannerText = '🎯 BOKSER ODSŁONIĘTY PO PUDLE! ZADAJ CIOS TERAZ (PODWÓJNE OBRAŻENIA)!';
+    }
+
+    container.innerHTML = `
+      <div class="boxing-bars">
+        <div class="hp-meter-box">
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px;">
+            <span>🥊 TY (Uczeń ZSTI)</span>
+            <span>${playerHp}/${maxPlayerHp} HP | Kondycja: ${Math.round(playerStamina)}%</span>
+          </div>
+          <div class="hp-meter-fill" style="width:${pPct}%;"></div>
+          <div class="hp-meter-fill stamina" style="width:${playerStamina}%;"></div>
+        </div>
+        <div class="hp-meter-box">
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px;">
+            <span>🥊 ŻELAZNY BOKSER ARENY</span>
+            <span>${boxerHp}/${maxBoxerHp} HP</span>
+          </div>
+          <div class="hp-meter-fill enemy" style="width:${bPct}%;"></div>
+        </div>
+      </div>
+
+      <div style="background:#09090b;border:1px solid ${stateBannerColor};padding:8px 12px;border-radius:6px;text-align:center;">
+        <div style="font-weight:800;font-size:12.5px;color:${stateBannerColor};">${stateBannerText}</div>
+        <div style="font-size:12px;color:#d1d5db;margin-top:3px;">${combatLog}</div>
+      </div>
+
+      <div class="boxing-actions-grid">
+        <button class="box-move-btn" onclick="executeBoxingMove('jab')">
+          🥊 LEWY PROSTY<br><span style="font-size:10px;color:#9ca3af;">-18 Kondycji</span>
+        </button>
+        <button class="box-move-btn" onclick="executeBoxingMove('hook')">
+          💥 SIERPOWY<br><span style="font-size:10px;color:#9ca3af;">-30 Kondycji</span>
+        </button>
+        <button class="box-move-btn" onclick="executeBoxingMove('uppercut')">
+          ⚡ PODBRÓDKOWY<br><span style="font-size:10px;color:#9ca3af;">-42 Kondycji</span>
+        </button>
+        <button class="box-move-btn" style="border-color:#38bdf8;" onclick="executeBoxingMove('dodge')">
+          💨 SZYBKI UNIK<br><span style="font-size:10px;color:#38bdf8;">Otwiera kontrę!</span>
+        </button>
+        <button class="box-move-btn" style="border-color:#10b981;" onclick="executeBoxingMove('block')">
+          🛡️ SZCZELNA GARDA<br><span style="font-size:10px;color:#10b981;">+25 Kondycji</span>
+        </button>
+      </div>
+    `;
+  }
+
+  // Cykl AI Boksera w czasie rzeczywistym
+  let aiLoop = setInterval(() => {
+    if (!running) return;
+    playerStamina = Math.min(100, playerStamina + 8);
+
+    if (boxerState === 'guard' && Math.random() < 0.45) {
+      boxerState = 'windup';
+      playerDefense = 'none';
+      combatLog = "Bokser cofa prawą rękę do potężnego ciosu! Zareaguj UNIKIEM lub GARDĄ!";
+      playTone(280, 0.14, 'sawtooth');
+      renderRing();
+
+      setTimeout(() => {
+        if (!running || boxerState !== 'windup') return;
+        triggerFighterAnim('int-npc-card', 'anim-enemy-l');
+
+        if (playerDefense === 'dodge') {
+          boxerState = 'stunned';
+          combatLog = "Piękny unik! Bokser przestrzelił i stracił równowagę – uderzaj teraz!";
+          playTone(620, 0.12);
+          renderRing();
+          setTimeout(() => {
+            if (running && boxerState === 'stunned') {
+              boxerState = 'guard';
+              renderRing();
+            }
+          }, 2200);
+        } else if (playerDefense === 'block') {
+          boxerState = 'guard';
+          playerHp = Math.max(0, playerHp - 12);
+          combatLog = "Zablokowałeś ciężki cios na gardę (-12 HP zamiast -55 HP)!";
+          playTone(340, 0.1);
+          updateFightersVisualDamage();
+          renderRing();
+        } else {
+          boxerState = 'guard';
+          playerHp = Math.max(0, playerHp - 55);
+          triggerFighterAnim('int-player-card', 'anim-hit');
+          combatLog = "Czyste trafienie boksera! Nie zdążyłeś z unikiem (-55 HP)!";
+          playTone(150, 0.25, 'sawtooth');
+          updateFightersVisualDamage();
+          if (playerHp <= 0) {
+            cleanupBoxing();
+            loseOneHeart(`Żelazny Bokser znokautował Cię na ringu PreZero Areny.`, loc);
+            return;
+          }
+          renderRing();
+        }
+      }, 1150);
+    } else {
+      renderRing();
+    }
+  }, 950);
+
+  function cleanupBoxing() {
+    running = false;
+    clearInterval(aiLoop);
+  }
+  activeMinigameCleanup = cleanupBoxing;
+
+  window.executeBoxingMove = function(move) {
+    if (!running) return;
+
+    if (move === 'dodge') {
+      if (playerStamina < 15) {
+        combatLog = "Za mało kondycji na unik! Użyj Gardy, aby złapać oddech.";
+        renderRing();
+        return;
+      }
+      playerStamina -= 15;
+      playerDefense = 'dodge';
+      triggerFighterAnim('int-player-card', 'anim-guard');
+      combatLog = "Przygotowałeś niski unik w tempo!";
+      playTone(480, 0.08);
+      renderRing();
+      return;
+    }
+
+    if (move === 'block') {
+      playerStamina = Math.min(100, playerStamina + 25);
+      playerDefense = 'block';
+      triggerFighterAnim('int-player-card', 'anim-guard');
+      combatLog = "Podnosisz wysoką gardę i regenerujesz kondycję (+25%).";
+      playTone(400, 0.08);
+      renderRing();
+      return;
+    }
+
+    // Ataki wymagają kondycji
+    const costs = { jab: 18, hook: 30, uppercut: 42 };
+    const baseDmg = { jab: 22, hook: 36, uppercut: 50 };
+
+    if (playerStamina < costs[move]) {
+      combatLog = "Brakuje Ci tchu! Kliknij [SZCZELNA GARDA], aby odzyskać kondycję!";
+      playTone(200, 0.1, 'sawtooth');
+      renderRing();
+      return;
+    }
+
+    playerStamina -= costs[move];
+
+    if (move === 'jab') triggerFighterAnim('int-player-card', 'anim-jab-r');
+    if (move === 'hook') triggerFighterAnim('int-player-card', 'anim-hook-r');
+    if (move === 'uppercut') triggerFighterAnim('int-player-card', 'anim-uppercut-r');
+
+    // Jeśli uderzasz dokładnie wtedy, gdy bokser bierze zamach, dostajesz kontrę!
+    if (boxerState === 'windup') {
+      playerHp = Math.max(0, playerHp - 35);
+      triggerFighterAnim('int-player-card', 'anim-hit');
+      combatLog = "Odsłoniłeś się atakując podczas zamachu boksera! Nadziałeś się na kontrę (-35 HP)!";
+      playTone(170, 0.2, 'sawtooth');
+      updateFightersVisualDamage();
+      if (playerHp <= 0) {
+        cleanupBoxing();
+        loseOneHeart(`Nadziałeś się na kontrę boksera na ringu PreZero Areny.`, loc);
+        return;
+      }
+      renderRing();
+      return;
+    }
+
+    const multiplier = boxerState === 'stunned' ? 1.85 : 0.65;
+    const finalDmg = Math.round(baseDmg[move] * multiplier);
+    boxerHp = Math.max(0, boxerHp - finalDmg);
+    triggerFighterAnim('int-npc-card', 'anim-hit');
+    playTone(580, 0.12);
+
+    if (boxerState === 'stunned') {
+      combatLog = `CZYSTA KONTRA W ODSŁONIĘTEGO RYWALA! Zadajesz -${finalDmg} HP!`;
+      boxerState = 'guard';
+    } else {
+      combatLog = `Uderzasz przez gardę boksera za -${finalDmg} HP (zrób unik przed jego atakiem, by zadać 2x więcej!).`;
+    }
+
+    updateFightersVisualDamage();
+    if (boxerHp <= 0) {
+      cleanupBoxing();
+      completeChapterSuccess(loc);
+      return;
+    }
+    renderRing();
+  };
+
+  updateFightersVisualDamage();
+  renderRing();
+}
+
+// ============================================================================
+// MINIGRA 4 (NOWA LOKALIZACJA): PARK CHROBREGO — WSPINACZKA NA WIELKIEGO PAJĄCZKA (W, S, A, D)
+// ============================================================================
+
+function setupSpiderClimbMinigame(loc, container) {
+  container.innerHTML = `
+    <div class="canvas-mg-wrap">
+      <div style="display:flex;justify-content:space-between;width:100%;max-width:520px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+        <span>🕸️ WYSOKOŚĆ NA PAJĄCZKU: <b id="spider-step-val" style="color:#34d399;">0 / 14</b></span>
+        <span>CZAS NA CHWYT LINY: <b id="spider-timer-val" style="color:#facc15;">2.2 s</b></span>
+      </div>
+      <canvas id="spiderCanvas" class="mg-canvas" width="520" height="270"></canvas>
+      <div style="display:flex;gap:10px;">
+        <button class="hud-btn" onclick="pressSpiderKey('W')">▲ W</button>
+        <button class="hud-btn" onclick="pressSpiderKey('S')">▼ S</button>
+        <button class="hud-btn" onclick="pressSpiderKey('A')">◀ A</button>
+        <button class="hud-btn" onclick="pressSpiderKey('D')">▶ D</button>
+      </div>
+    </div>
+  `;
+
+  const canvas = document.getElementById('spiderCanvas');
+  const ctx = canvas.getContext('2d');
+  const stepEl = document.getElementById('spider-step-val');
+  const timerEl = document.getElementById('spider-timer-val');
+
+  const keysPool = ['W', 'S', 'A', 'D'];
+  const totalSteps = 14;
+  let currentStep = 0;
+  let requiredKey = keysPool[Math.floor(Math.random() * 4)];
+  let maxStepTime = 2.2;
+  let stepTimeLeft = maxStepTime;
+  let running = true;
+  let animId = null;
+
+  function nextPrompt() {
+    requiredKey = keysPool[Math.floor(Math.random() * 4)];
+    maxStepTime = Math.max(1.15, 2.2 - currentStep * 0.07);
+    stepTimeLeft = maxStepTime;
+  }
+
+  window.pressSpiderKey = function(k) {
+    if (!running) return;
+    if (k.toUpperCase() === requiredKey) {
+      currentStep++;
+      stepEl.textContent = `${currentStep} / ${totalSteps}`;
+      playTone(440 + currentStep * 28, 0.09);
+      if (currentStep >= totalSteps) {
+        cleanupSpider();
+        completeChapterSuccess(loc);
+        return;
+      }
+      nextPrompt();
+    } else {
+      cleanupSpider();
+      loseOneHeart(`Wcisnąłeś zły klawisz (${k}) zamiast [${requiredKey}] i ześlizgnąłeś się z liny Pajączka!`, loc);
+    }
+  };
+
+  function keyHandler(e) {
+    if (!running) return;
+    const k = e.key.toUpperCase();
+    if (['W', 'S', 'A', 'D'].includes(k)) {
+      e.preventDefault();
+      window.pressSpiderKey(k);
+    }
+  }
+  window.addEventListener('keydown', keyHandler);
+
+  let timerLoop = setInterval(() => {
+    if (!running) return;
+    stepTimeLeft -= 0.05;
+    if (stepTimeLeft <= 0) {
+      cleanupSpider();
+      loseOneHeart(`Zbyt wolna reakcja! Puściłeś czerwoną linę Wielkiego Pajączka w Parku Chrobrego.`, loc);
+      return;
+    }
+    timerEl.textContent = `${stepTimeLeft.toFixed(1)} s`;
+  }, 50);
+
+  function cleanupSpider() {
+    running = false;
+    clearInterval(timerLoop);
+    cancelAnimationFrame(animId);
+    window.removeEventListener('keydown', keyHandler);
+  }
+  activeMinigameCleanup = cleanupSpider;
+
+  function loop() {
+    if (!running) return;
+
+    // Niebo, drzewa Parku Chrobrego i piaskowe podłoże pod Pajączkiem
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#14532d';
+    ctx.fillRect(0, 215, canvas.width, 55);
+    ctx.fillStyle = '#fde68a';
+    ctx.fillRect(90, 232, 340, 38);
+
+    // Centralny stalowy maszt piramidy linowej w Parku Chrobrego
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(256, 22, 8, 220);
+
+    // Czerwone liny Pajączka tworzące siatkę piramidy
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    for (let i = 0; i <= 6; i++) {
+      const spread = 35 + i * 26;
+      const yLevel = 32 + i * 32;
+      ctx.beginPath();
+      ctx.moveTo(260, 24);
+      ctx.lineTo(260 - spread, 240);
+      ctx.moveTo(260, 24);
+      ctx.lineTo(260 + spread, 240);
+      ctx.moveTo(260 - spread * 0.85, yLevel);
+      ctx.lineTo(260 + spread * 0.85, yLevel);
+      ctx.stroke();
+    }
+
+    // Pozycja gracza wspinającego się na szczyt piramidy
+    const progressRatio = currentStep / totalSteps;
+    const climberY = 215 - progressRatio * 175;
+    const climberX = 260 + Math.sin(currentStep * 1.3) * (1 - progressRatio) * 65;
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(climberX - 11, climberY - 14, 22, 24);
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(climberX - 8, climberY - 26, 16, 12);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('TY', climberX, climberY + 2);
+
+    // Duża czytelna ikona wymaganego klawisza W / S / A / D z paskiem czasu
+    ctx.fillStyle = 'rgba(17, 24, 39, 0.94)';
+    ctx.fillRect(365, 36, 130, 125);
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(365, 36, 130, 125);
+
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('WCIŚNIJ KLAWISZ:', 430, 56);
+
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 42px monospace';
+    ctx.fillText(requiredKey, 430, 112);
+
+    // Pasek czasu na chwyt
+    const barW = Math.max(0, (stepTimeLeft / maxStepTime) * 106);
+    ctx.fillStyle = '#374151';
+    ctx.fillRect(377, 134, 106, 10);
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(377, 134, barW, 10);
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ============================================================================
+// MINIGRA 5: KEBAB HABIB — TRUDNIEJSZA WALKA Z ADASIEM (LIMIT KEBABÓW, ADAŚ RZUCA W NAS, TIMER TARCZY)
+// ============================================================================
+
+function setupHabibKebabMinigame(loc, container) {
+  container.innerHTML = `
+    <div class="canvas-mg-wrap">
+      <div style="display:flex;justify-content:space-between;width:100%;max-width:540px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+        <span>🎯 TRAFIENIA: <b id="adas-hits-val" style="color:#fb923c;">0 / 8</b></span>
+        <span>🥙 LIMIT KEBABÓW: <b id="kebab-ammo-val" style="color:#facc15;">12 szt.</b></span>
+        <span>❤️ UNIKI: <b id="kebab-player-hp" style="color:#10b981;">3 / 3</b></span>
+      </div>
+      <canvas id="habibCanvas" class="mg-canvas" width="540" height="280"></canvas>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button class="hud-btn" id="habib-left-btn">◀ UNIK W LEWO (A)</button>
+        <button class="action-primary-btn" id="habib-shoot-btn" style="background:#ea580c;border-color:#fb923c;">🥙 RZUĆ KEBABEM (SPACJA)</button>
+        <button class="hud-btn" id="habib-right-btn">UNIK W PRAWO (D) ▶</button>
+      </div>
+    </div>
+  `;
+
+  const canvas = document.getElementById('habibCanvas');
+  const ctx = canvas.getContext('2d');
+  const hitsEl = document.getElementById('adas-hits-val');
+  const ammoEl = document.getElementById('kebab-ammo-val');
+  const hpEl = document.getElementById('kebab-player-hp');
+
+  let playerX = 270;
+  let playerLocalHp = 3;
+  let kebabAmmo = 12; // Limitowana liczba kebabów (musisz trafić 8 razy mając 12 sztuk!)
+  let adasX = 270;
+  let adasVx = 3.9;
+  let adasHits = 0;
+  const targetHits = 8;
+
+  // Zegar tarczy Adasia (pokazuje dokładny timer w sekundach kiedy tarcza się pojawi i kiedy zniknie!)
+  let adasShieldActive = false;
+  let shieldCountdown = 2.4; // Czas do włączenia lub wyłączenia tarczy w sekundach
+
+  let playerKebabs = [];
+  let enemyKebabs = []; // Adaś co jakiś czas rzuca w nas ostrym kebabem!
+  let running = true;
+  let animId = null;
+
+  function shootKebab() {
+    if (!running) return;
+    if (kebabAmmo <= 0) return;
+    if (playerKebabs.filter(k => !k.deflected).length >= 2) return;
+
+    kebabAmmo--;
+    ammoEl.textContent = `${kebabAmmo} szt.`;
+    playerKebabs.push({ x: playerX, y: 222, vy: -6.2, deflected: false });
+    playTone(520, 0.06);
+  }
+
+  document.getElementById('habib-left-btn').onclick = () => { playerX = Math.max(45, playerX - 38); };
+  document.getElementById('habib-right-btn').onclick = () => { playerX = Math.min(495, playerX + 38); };
+  document.getElementById('habib-shoot-btn').onclick = shootKebab;
+
+  function keyHandler(e) {
+    if (!running) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') playerX = Math.max(45, playerX - 30);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') playerX = Math.min(495, playerX + 30);
+    if (e.key === ' ') { e.preventDefault(); shootKebab(); }
+  }
+  window.addEventListener('keydown', keyHandler);
+
+  // Timer odliczający do tarczy Adasia oraz rzutów Adasia w gracza
+  let stateTimer = setInterval(() => {
+    if (!running) return;
+    shieldCountdown -= 0.1;
+    if (shieldCountdown <= 0) {
+      adasShieldActive = !adasShieldActive;
+      shieldCountdown = adasShieldActive ? 1.5 : 2.3; // 1.5s aktywnej tarczy, 2.3s przerwy
+    }
+  }, 100);
+
+  let adasThrowTimer = setInterval(() => {
+    if (!running) return;
+    // Adaś celuje i rzuca ostrym kebabem w gracza!
+    const aimDx = (playerX - adasX) * 0.018;
+    enemyKebabs.push({ x: adasX, y: 78, vx: Math.max(-2.2, Math.min(2.2, aimDx)), vy: 4.8 });
+    playTone(280, 0.07, 'sawtooth');
+  }, 1450);
+
+  function cleanupHabib() {
+    running = false;
+    clearInterval(stateTimer);
+    clearInterval(adasThrowTimer);
+    cancelAnimationFrame(animId);
+    window.removeEventListener('keydown', keyHandler);
+  }
+  activeMinigameCleanup = cleanupHabib;
+
+  function checkOutOfAmmo() {
+    const needed = targetHits - adasHits;
+    const inFlight = playerKebabs.filter(k => !k.deflected).length;
+    if (kebabAmmo + inFlight < needed) {
+      cleanupHabib();
+      loseOneHeart(`Skończyły Ci się kebaby w torbie (${adasHits}/8 trafień)! Nie marnuj rzutów w tarczę Adasia.`, loc);
+    }
+  }
+
+  function loop() {
+    if (!running) return;
+
+    ctx.fillStyle = '#1c100b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#361910';
+    ctx.fillRect(0, 0, canvas.width, 40);
+
+    // Ruch Adasia
+    adasX += adasVx;
+    if (adasX < 65 || adasX > 475) adasVx *= -1;
+    if (Math.random() < 0.025) adasVx *= -1;
+
+    // Rysuj Adasia oraz WIDOCZNY TIMER JEGO TARCZY (Punkt 6)
+    ctx.save();
+    if (adasShieldActive) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+      ctx.beginPath();
+      ctx.arc(adasX, 66, 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Licznik na tarczy pokazujący kiedy zniknie
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(adasX - 62, 12, 124, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`🛡️ TARCZA ODBIJA: ${shieldCountdown.toFixed(1)}s`, adasX, 24);
+    } else {
+      // Licznik pokazujący kiedy tarcza się pojawi!
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(adasX - 65, 12, 130, 18);
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(adasX - 65, 12, 130, 18);
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`⏱️ TARCZA ZA: ${shieldCountdown.toFixed(1)}s`, adasX, 24);
+    }
+
+    // Sylwetka Adasia
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(adasX - 18, 50, 36, 32);
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(adasX - 18, 68, 36, 5);
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(adasX - 12, 36, 24, 14);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(adasX - 13, 38, 26, 4);
+    ctx.restore();
+
+    // Rysuj Gracza na dole
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(playerX - 20, 230, 40, 32);
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(playerX - 12, 216, 24, 14);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`TY (KEBABY: ${kebabAmmo})`, playerX, 272);
+
+    // 1. Kebaby rzucane przez Gracza
+    for (let i = playerKebabs.length - 1; i >= 0; i--) {
+      const k = playerKebabs[i];
+      k.y += k.vy;
+
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.ellipse(k.x, k.y, 9, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.arc(k.x, k.y - 4, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!k.deflected && k.y < 84 && k.y > 42 && Math.abs(k.x - adasX) < 30) {
+        if (adasShieldActive) {
+          k.deflected = true;
+          k.vy = 6.8;
+          playTone(220, 0.12, 'sawtooth');
+        } else {
+          adasHits++;
+          hitsEl.textContent = `${adasHits} / ${targetHits}`;
+          playTone(680, 0.1);
+          playerKebabs.splice(i, 1);
+          if (adasHits >= targetHits) {
+            cleanupHabib();
+            completeChapterSuccess(loc);
+            return;
+          }
+          checkOutOfAmmo();
+          continue;
+        }
+      }
+
+      if (k.deflected && k.y > 215 && k.y < 260 && Math.abs(k.x - playerX) < 26) {
+        playerLocalHp--;
+        hpEl.textContent = `${playerLocalHp} / 3`;
+        playTone(150, 0.2, 'sawtooth');
+        playerKebabs.splice(i, 1);
+        if (playerLocalHp <= 0) {
+          cleanupHabib();
+          loseOneHeart(`Zostałeś trafiony odbitym kebabem!`, loc);
+          return;
+        }
+        checkOutOfAmmo();
+        continue;
+      }
+
+      if (k.y < -15 || k.y > canvas.height + 15) {
+        playerKebabs.splice(i, 1);
+        checkOutOfAmmo();
+      }
+    }
+
+    // 2. Ostre kebaby rzucane przez Adasia w Gracza
+    for (let i = enemyKebabs.length - 1; i >= 0; i--) {
+      const ek = enemyKebabs[i];
+      ek.x += ek.vx;
+      ek.y += ek.vy;
+
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.ellipse(ek.x, ek.y, 8, 12, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(ek.x - 4, ek.y - 4, 8, 4);
+
+      if (ek.y > 215 && ek.y < 260 && Math.abs(ek.x - playerX) < 25) {
+        playerLocalHp--;
+        hpEl.textContent = `${playerLocalHp} / 3`;
+        playTone(150, 0.2, 'sawtooth');
+        enemyKebabs.splice(i, 1);
+        if (playerLocalHp <= 0) {
+          cleanupHabib();
+          loseOneHeart(`Adaś trafił Cię swoimi ostrymi kebabami! Bądź w ciągłym ruchu!`, loc);
+          return;
+        }
+        continue;
+      }
+
+      if (ek.y > canvas.height + 20) enemyKebabs.splice(i, 1);
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ============================================================================
+// MINIGRA 6 (END-GAME): ROZBUDOWANY MECZ PIŁKI NOŻNEJ 3v3 Z BOTAMI AI (PUNKT 7)
+// Pełne boisko 2D, 2 boty Piasta w Twojej drużynie, 3 boty Górnika, podania, odbiory i strzały!
+// ============================================================================
+
+function setupPiastMatchMinigame(loc, container) {
+  container.innerHTML = `
+    <div class="canvas-mg-wrap">
+      <div style="display:flex;justify-content:space-between;width:100%;max-width:560px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+        <span style="color:#60a5fa;">🔵🔴 PIAST GLIWICE: <b id="score-piast">0</b> / 3</span>
+        <span id="match-status-banner" style="color:#facc15;">MECZ 3v3 Z BOTAMI (DO 3 GOLI)</span>
+        <span style="color:#f87171;">⚪⚫ GÓRNIK ZABRZE: <b id="score-gornik">0</b> / 3</span>
+      </div>
+      <canvas id="stadiumCanvas" class="mg-canvas" width="560" height="300"></canvas>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+        <span style="font-size:11px;color:#9ca3af;align-self:center;">Ruch 2D: <b>WSAD / Strzałki</b> |</span>
+        <button class="hud-btn" id="btn-pass-bot">🤝 PODAJ DO BOTA PIASTA (Klawisz E)</button>
+        <button class="action-primary-btn" id="btn-shoot-tackle">⚽ STRZAŁ NA BRAMKĘ / ODBIÓR (SPACJA)</button>
+      </div>
+    </div>
+  `;
+
+  const canvas = document.getElementById('stadiumCanvas');
+  const ctx = canvas.getContext('2d');
+  const piastScoreEl = document.getElementById('score-piast');
+  const gornikScoreEl = document.getElementById('score-gornik');
+  const bannerEl = document.getElementById('match-status-banner');
+
+  let piastGoals = 0;
+  let gornikGoals = 0;
+  let running = true;
+  let animId = null;
+
+  const keys = { w: false, s: false, a: false, d: false };
+
+  // Zawodnicy Piasta Gliwice (Atakują w PRAWO -> bramka Górnika na X = 540)
+  let player = { id: 'p_you', team: 'piast', label: 'TY (9)', x: 210, y: 150, speed: 2.7 };
+  let piastBot1 = { id: 'p_bot1', team: 'piast', label: 'BOT PIAST (7)', x: 250, y: 70, speed: 2.1 };
+  let piastBot2 = { id: 'p_bot2', team: 'piast', label: 'BOT PIAST (10)', x: 140, y: 225, speed: 2.0 };
+  let piastGK = { id: 'p_gk', team: 'piast', label: 'GK', x: 28, y: 150, vy: 2.1 };
+
+  // Boty Górnika Zabrze (Atakują w LEWO -> bramka Piasta na X = 20)
+  let gornikBot1 = { id: 'g_bot1', team: 'gornik', label: 'GÓRNIK (8)', x: 350, y: 110, speed: 2.15 };
+  let gornikBot2 = { id: 'g_bot2', team: 'gornik', label: 'GÓRNIK (4)', x: 410, y: 195, speed: 2.0 };
+  let gornikGK = { id: 'g_gk', team: 'gornik', label: 'GK', x: 532, y: 150, vy: 2.4 };
+
+  const allFieldPlayers = [player, piastBot1, piastBot2, gornikBot1, gornikBot2];
+
+  let ball = {
+    x: 280,
+    y: 150,
+    vx: 0,
+    vy: 0,
+    owner: player,
+    cooldown: 0
+  };
+
+  function resetPositionsAfterGoal(kickoffOwner) {
+    player.x = 220; player.y = 150;
+    piastBot1.x = 260; piastBot1.y = 65;
+    piastBot2.x = 150; piastBot2.y = 230;
+    gornikBot1.x = 340; gornikBot1.y = 115;
+    gornikBot2.x = 415; gornikBot2.y = 190;
+    ball.x = 280; ball.y = 150;
+    ball.vx = 0; ball.vy = 0;
+    ball.owner = kickoffOwner;
+    ball.cooldown = 25;
+  }
+
+  // Podanie do najbliższego wolnego Bota Piasta Gliwice
+  function passToPiastBot() {
+    if (!running) return;
+    if (ball.owner !== player) {
+      bannerEl.textContent = "Nie masz piłki! Podbiegnij i wciśnij SPACJĘ, aby odebrać!";
+      return;
+    }
+    const targetBot = Math.hypot(piastBot1.x - 530, piastBot1.y - 150) < Math.hypot(piastBot2.x - 530, piastBot2.y - 150)
+      ? piastBot1 : piastBot2;
+
+    const dx = targetBot.x - ball.x;
+    const dy = targetBot.y - ball.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    ball.owner = null;
+    ball.cooldown = 14;
+    ball.vx = (dx / dist) * 6.8;
+    ball.vy = (dy / dist) * 6.8;
+    bannerEl.textContent = `Podanie do: ${targetBot.label}!`;
+    playTone(520, 0.07);
+  }
+
+  // Strzał na bramkę Górnika lub Odbiór piłki (Wślizg)
+  function shootOrTackle() {
+    if (!running) return;
+
+    if (ball.owner === player) {
+      // Strzał w stronę prawej bramki Górnika (celując w narożnik daleko od bramkarza Górnika)
+      const targetY = gornikGK.y < 150 ? 182 : 118;
+      const dx = 545 - ball.x;
+      const dy = targetY - ball.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      ball.owner = null;
+      ball.cooldown = 18;
+      ball.vx = (dx / dist) * 8.5;
+      ball.vy = (dy / dist) * 8.5;
+      bannerEl.textContent = "POTĘŻNY STRZAŁ NA BRAMKĘ GÓRNIKA!";
+      playTone(640, 0.1);
+    } else if (ball.owner && ball.owner.team === 'piast') {
+      // Jeśli piłkę ma nasz Bot Piasta, zawołaj o podanie do Ciebie!
+      const dx = player.x - ball.x;
+      const dy = player.y - ball.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      ball.owner = null;
+      ball.cooldown = 14;
+      ball.vx = (dx / dist) * 6.8;
+      ball.vy = (dy / dist) * 6.8;
+      bannerEl.textContent = "Bot Piasta podaje piłkę prosto do Ciebie!";
+      playTone(500, 0.07);
+    } else {
+      // Próba odbioru piłki rywalowi z Górnika
+      const d = Math.hypot(player.x - ball.x, player.y - ball.y);
+      if (d < 42) {
+        ball.owner = player;
+        ball.cooldown = 20;
+        bannerEl.textContent = "Czysty odbiór piłki! Biegnij na bramkę Górnika!";
+        playTone(580, 0.09);
+      } else {
+        bannerEl.textContent = "Podejdź bliżej zawodnika z piłką, aby wykonać odbiór!";
+      }
+    }
+  }
+
+  document.getElementById('btn-pass-bot').onclick = passToPiastBot;
+  document.getElementById('btn-shoot-tackle').onclick = shootOrTackle;
+
+  function keyDownHandler(e) {
+    if (!running) return;
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.w = true;
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.s = true;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.a = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.d = true;
+    if (e.key === 'e' || e.key === 'E') { e.preventDefault(); passToPiastBot(); }
+    if (e.key === ' ') { e.preventDefault(); shootOrTackle(); }
+  }
+  function keyUpHandler(e) {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.w = false;
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.s = false;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.a = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.d = false;
+  }
+
+  window.addEventListener('keydown', keyDownHandler);
+  window.addEventListener('keyup', keyUpHandler);
+
+  function cleanupMatch() {
+    running = false;
+    cancelAnimationFrame(animId);
+    window.removeEventListener('keydown', keyDownHandler);
+    window.removeEventListener('keyup', keyUpHandler);
+  }
+  activeMinigameCleanup = cleanupMatch;
+
+  function moveTowards(bot, tx, ty, spd) {
+    const dx = tx - bot.x;
+    const dy = ty - bot.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 2) {
+      bot.x += (dx / dist) * spd;
+      bot.y += (dy / dist) * spd;
+    }
+    bot.x = Math.max(38, Math.min(522, bot.x));
+    bot.y = Math.max(24, Math.min(276, bot.y));
+  }
+
+  function loop() {
+    if (!running) return;
+
+    // 1. Murawa Stadionu Piasta Gliwice (widok 2D z góry)
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#15803d' : '#166534';
+      ctx.fillRect(i * 40, 0, 40, canvas.height);
+    }
+
+    // Linie boiska, koło środkowe, pola karne i 2 bramki
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, 14, 520, 272);
+    ctx.beginPath();
+    ctx.moveTo(280, 14); ctx.lineTo(280, 286);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(280, 150, 38, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Pola karne i bramki (Lewa: Piast Gliwice, Prawa: Górnik Zabrze)
+    ctx.strokeRect(20, 75, 75, 150);
+    ctx.strokeRect(465, 75, 75, 150);
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.35)';
+    ctx.fillRect(6, 105, 14, 90);
+    ctx.strokeRect(6, 105, 14, 90);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+    ctx.fillRect(540, 105, 14, 90);
+    ctx.strokeRect(540, 105, 14, 90);
+
+    // 2. Sterowanie Graczem Piasta w 2D
+    if (keys.w) player.y -= player.speed;
+    if (keys.s) player.y += player.speed;
+    if (keys.a) player.x -= player.speed;
+    if (keys.d) player.x += player.speed;
+    player.x = Math.max(35, Math.min(525, player.x));
+    player.y = Math.max(24, Math.min(276, player.y));
+
+    // 3. Inteligencja Botów Piasta Gliwice (Współpraca w ataku i obronie)
+    [piastBot1, piastBot2].forEach((bot, idx) => {
+      if (ball.owner === bot) {
+        // Bot Piasta biegnie z piłką na bramkę Górnika
+        moveTowards(bot, 485, idx === 0 ? 115 : 185, bot.speed);
+        if (bot.x > 410 && Math.random() < 0.04) {
+          // Bot Piasta oddaje strzał na bramkę Górnika lub podaje do gracza!
+          const targetY = gornikGK.y < 150 ? 180 : 120;
+          const dx = 545 - ball.x;
+          const dy = targetY - ball.y;
+          const d = Math.hypot(dx, dy) || 1;
+          ball.owner = null; ball.cooldown = 16;
+          ball.vx = (dx / d) * 7.8; ball.vy = (dy / d) * 7.8;
+          bannerEl.textContent = `${bot.label} uderza na bramkę Górnika!`;
+        }
+      } else if (ball.owner && ball.owner.team === 'piast') {
+        // Wystawianie się na wolne pole do podania
+        const wingY = idx === 0 ? 65 : 235;
+        moveTowards(bot, Math.min(470, ball.x + 85), wingY, bot.speed);
+      } else {
+        // Powrót do obrony i pressing na piłkę
+        moveTowards(bot, ball.x - 25, idx === 0 ? ball.y - 30 : ball.y + 30, bot.speed);
+      }
+    });
+
+    // 4. Inteligencja Botów Górnika Zabrze (Pressing, podania i strzały na bramkę Piasta)
+    [gornikBot1, gornikBot2].forEach((gBot, idx) => {
+      if (ball.owner === gBot) {
+        // Biegnie w lewo na bramkę Piasta
+        moveTowards(gBot, 85, 150, gBot.speed);
+        if (gBot.x < 165 && Math.random() < 0.045) {
+          const targetY = piastGK.y < 150 ? 178 : 122;
+          const dx = 15 - ball.x;
+          const dy = targetY - ball.y;
+          const d = Math.hypot(dx, dy) || 1;
+          ball.owner = null; ball.cooldown = 16;
+          ball.vx = (dx / d) * 7.5; ball.vy = (dy / d) * 7.5;
+          bannerEl.textContent = `Uwaga! ${gBot.label} strzela na bramkę Piasta!`;
+        }
+      } else if (idx === 0) {
+        // Pierwszy bot Górnika atakuje właściciela piłki
+        moveTowards(gBot, ball.x, ball.y, gBot.speed);
+      } else {
+        // Drugi bot Górnika asekuruje tyły
+        moveTowards(gBot, Math.max(260, ball.x + 60), 185, gBot.speed);
+      }
+    });
+
+    // 5. Ruch Bramkarzy w świetle bramek (Y: 112 .. 188)
+    piastGK.y += piastGK.vy;
+    if (piastGK.y < 112 || piastGK.y > 188) piastGK.vy *= -1;
+    gornikGK.y += gornikGK.vy;
+    if (gornikGK.y < 112 || gornikGK.y > 188) gornikGK.vy *= -1;
+
+    // 6. Fizyka piłki i przejęcia
+    if (ball.cooldown > 0) ball.cooldown--;
+
+    if (ball.owner) {
+      const dirOffset = ball.owner.team === 'piast' ? 12 : -12;
+      ball.x = ball.owner.x + dirOffset;
+      ball.y = ball.owner.y;
+
+      // Sprawdź czy przeciwnik odbiera piłkę
+      if (ball.cooldown === 0) {
+        for (const p of allFieldPlayers) {
+          if (p.team !== ball.owner.team && Math.hypot(p.x - ball.x, p.y - ball.y) < 18) {
+            ball.owner = p;
+            ball.cooldown = 22;
+            playTone(320, 0.06);
+            break;
+          }
+        }
+      }
+    } else {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.vx *= 0.96;
+      ball.vy *= 0.96;
+
+      // Odbicie od linii bocznych
+      if (ball.y < 20 || ball.y > 280) ball.vy *= -1;
+
+      // Interwencje bramkarzy
+      if (Math.hypot(ball.x - gornikGK.x, ball.y - gornikGK.y) < 20) {
+        ball.vx = -6.0;
+        ball.vy = (Math.random() - 0.5) * 5;
+        bannerEl.textContent = "Bramkarz Górnika broni strzał! Dobijaj!";
+        playTone(240, 0.12, 'sawtooth');
+      }
+      if (Math.hypot(ball.x - piastGK.x, ball.y - piastGK.y) < 20) {
+        ball.vx = 6.0;
+        ball.vy = (Math.random() - 0.5) * 5;
+        bannerEl.textContent = "Nasz bramkarz Piasta broni! Wyprowadzamy kontrę!";
+        playTone(480, 0.1);
+      }
+
+      // Sprawdzenie GOLA dla Piasta Gliwice (Prawa bramka X >= 538, Y w [105..195])
+      if (ball.x >= 538 && ball.y >= 105 && ball.y <= 195) {
+        piastGoals++;
+        piastScoreEl.textContent = piastGoals;
+        bannerEl.textContent = `⚽ GOOOL DLA PIASTA GLIWICE! (${piastGoals} : ${gornikGoals})`;
+        playTone(680, 0.15);
+        setTimeout(() => playTone(880, 0.22), 120);
+
+        if (piastGoals >= 3) {
+          cleanupMatch();
+          completeChapterSuccess(loc);
+          return;
+        }
+        resetPositionsAfterGoal(gornikBot1);
+      } else if (ball.x <= 22 && ball.y >= 105 && ball.y <= 195) {
+        // Gol dla Górnika Zabrze
+        gornikGoals++;
+        gornikScoreEl.textContent = gornikGoals;
+        bannerEl.textContent = `⚠️ Gol dla Górnika Zabrze (${piastGoals} : ${gornikGoals})`;
+        playTone(170, 0.25, 'sawtooth');
+
+        if (gornikGoals >= 3) {
+          cleanupMatch();
+          loseOneHeart(`Przegrałeś mecz derbowy Piast – Górnik (${piastGoals}:3).`, loc);
+          return;
+        }
+        resetPositionsAfterGoal(player);
+      } else if (ball.x < 22 || ball.x > 538) {
+        ball.vx *= -0.8;
+        ball.x = Math.max(24, Math.min(536, ball.x));
+      }
+
+      // Przejęcie wolnej piłki przez zawodników
+      if (ball.cooldown === 0) {
+        for (const p of allFieldPlayers) {
+          if (Math.hypot(p.x - ball.x, p.y - ball.y) < 18) {
+            ball.owner = p;
+            ball.cooldown = 14;
+            break;
+          }
+        }
+      }
+    }
+
+    // 7. Rysowanie wszystkich zawodników i bramkarzy
+    function drawSoccerPlayer(p, c1, c2) {
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.arc(p.x, p.y + 10, 10, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = c1;
+      ctx.fillRect(p.x - 10, p.y - 10, 10, 20);
+      ctx.fillStyle = c2;
+      ctx.fillRect(p.x, p.y - 10, 10, 20);
+      ctx.strokeStyle = p === player ? '#facc15' : '#09090b';
+      ctx.lineWidth = p === player ? 2.5 : 1.5;
+      ctx.strokeRect(p.x - 10, p.y - 10, 20, 20);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.label, p.x, p.y - 14);
+    }
+
+    drawSoccerPlayer(player, '#1d4ed8', '#dc2626');
+    drawSoccerPlayer(piastBot1, '#1d4ed8', '#dc2626');
+    drawSoccerPlayer(piastBot2, '#1d4ed8', '#dc2626');
+    drawSoccerPlayer(piastGK, '#10b981', '#059669');
+
+    drawSoccerPlayer(gornikBot1, '#ffffff', '#e4e4e7');
+    drawSoccerPlayer(gornikBot2, '#ffffff', '#e4e4e7');
+    drawSoccerPlayer(gornikGK, '#facc15', '#ca8a04');
+
+    // Rysuj piłkę
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ============================================================================
+// STEROWANIE PIESZE PO CHODNIKACH I PRZEJŚCIACH DLA PIESZYCH
+// ============================================================================
+
+function calcDistanceMeters(c1, c2) {
+  const R = 6371000;
+  const dLat = (c2[0] - c1[0]) * Math.PI / 180;
+  const dLon = (c2[1] - c1[1]) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(c1[0] * Math.PI / 180) * Math.cos(c2[0] * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function setupControls() {
+  const keyMap = {
+    ArrowUp: 'up', w: 'up', W: 'up',
+    ArrowDown: 'down', s: 'down', S: 'down',
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right'
+  };
+
+  window.addEventListener('keydown', (e) => {
+    if (keyMap[e.key]) gameState.moveKeys[keyMap[e.key]] = true;
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (keyMap[e.key]) gameState.moveKeys[keyMap[e.key]] = false;
+  });
+
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const startMove = (e) => { e.preventDefault(); gameState.moveKeys[dir] = true; btn.classList.add('active'); };
+    const stopMove = (e) => { e.preventDefault(); gameState.moveKeys[dir] = false; btn.classList.remove('active'); };
+    btn.addEventListener('mousedown', startMove);
+    btn.addEventListener('mouseup', stopMove);
+    btn.addEventListener('mouseleave', stopMove);
+    btn.addEventListener('touchstart', startMove, { passive: false });
+    btn.addEventListener('touchend', stopMove, { passive: false });
+  });
+
+  setInterval(() => {
+    if (!gameState.started) return;
+    if (!document.getElementById('interior-modal').classList.contains('hidden')) return;
+
+    let inLat = 0, inLng = 0;
+    if (gameState.moveKeys.up) inLat += 1;
+    if (gameState.moveKeys.down) inLat -= 1;
+    if (gameState.moveKeys.left) inLng -= 1;
+    if (gameState.moveKeys.right) inLng += 1;
+
+    const heroEl = document.getElementById('hero-map-el');
+    if (inLat !== 0 || inLng !== 0) {
+      stepWalkerAlongSidewalk(inLat, inLng);
+      heroMarker.setLatLng(gameState.heroPos);
+      if (heroEl) heroEl.classList.add('hero-walking');
+      updateTopAndBottomHud();
+    } else if (heroEl) {
+      heroEl.classList.remove('hero-walking');
+    }
+  }, 35);
+}
+
+// ============================================================================
+// START I PODSUMOWANIE GRY
+// ============================================================================
+
+function startStoryGame() {
+  document.getElementById('start-modal').classList.add('hidden');
+  gameState.started = true;
+  playTone(440, 0.1);
+  setTimeout(() => playTone(660, 0.15), 110);
+  showToast("📍 Stoisz na chodniku przed ZSTI Gliwice (ul. Chorzowska 5). Kliknij „WEJDŹ DO ŚRODKA”.");
+}
+
+function showEndGameModal(victory) {
+  const modal = document.getElementById('end-modal');
+  const title = document.getElementById('end-title');
+  const desc = document.getElementById('end-desc');
+  const scoreEl = document.getElementById('end-score');
+  const trophyEl = document.getElementById('end-trophy-svg');
+
+  if (victory) {
+    trophyEl.innerHTML = getTrophySvg();
+    trophyEl.classList.remove('hidden');
+    title.textContent = "🏆 ZDOBYTO ZŁOTY PUCHAR GLIWIC!";
+    title.style.color = "#facc15";
+    desc.textContent = "Ukończyłeś wszystkie 6 etapów w Gliwicach: skonfigurowałeś serwer u Pana Łukasza Kornasia w ZSTI, przejechałeś wózkiem przez parking CH Forum (z wizytą Pana Daniela Kuśki), wygrałeś taktyczną walkę w PreZero Arenie (z wizytą Pana Damiana Stelmacha), wspiąłeś się na Wielkiego Pajączka w Parku Chrobrego, pokonałeś Adasia w Kebabie Habib i wygrałeś mecz 3v3 Piast – Górnik z botami na Stadionie przy Okrzei!";
+  } else {
+    trophyEl.classList.add('hidden');
+    title.textContent = "KONIEC GRY — UTRACONO 3 ŻYCIA";
+    title.style.color = "#ef4444";
+    desc.textContent = "Straciłeś wszystkie 3 serduszka podczas wyzwań w Gliwicach. Spróbuj ponownie!";
+  }
+
+  scoreEl.textContent = `${gameState.score} PKT`;
+  modal.classList.remove('hidden');
+}
+
+function restartFullGame() {
+  gameState.lives = 3;
+  gameState.score = 0;
+  gameState.currentChapter = 0;
+  gameState.completedIds = [];
+  teleportWalkerToNode('n_zsti');
+
+  document.getElementById('end-modal').classList.add('hidden');
+  heroMarker.setLatLng(gameState.heroPos);
+  map.setView(gameState.heroPos, 16);
+  renderMapPins();
+  updateTopAndBottomHud();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('hud-avatar-svg').innerHTML = getPlayerSvg(100, false);
+  document.getElementById('start-hero-preview').innerHTML = getPlayerSvg(100, false);
+  initSatelliteMap();
+  setupControls();
+});
+</script>
+</body>
+</html>949.html…]()
+
+
+
+
+
+
